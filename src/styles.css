@@ -64,7 +64,7 @@ body::before{content:'';position:fixed;inset:0;background:
 .sb-user{display:flex;flex-direction:column}
 .sb-user b{font-size:11px}
 .sb-user span{font-family:'JetBrains Mono',monospace;font-size:8.5px;color:var(--t3)}
-.main-area{flex:1;position:relative;height:100%}
+.main-area{flex:1;position:relative;height:100%;overflow:hidden}
 
 /* ── LAYOUT ── */
 .layout{display:grid;grid-template-columns:278px 1fr 300px;height:100%;position:relative;z-index:1}
@@ -457,7 +457,7 @@ path.zone-fill{mix-blend-mode:screen}
 .nf{animation:numFlash .7s ease}
 
 /* ── WORKSPACE VIEWS ── */
-.view{display:none;height:100%;padding:18px;overflow:auto;position:relative;background:
+.view{display:none;position:absolute;inset:0;height:100%;padding:18px;overflow:auto;z-index:2;background:
   radial-gradient(600px 360px at 15% 20%,rgba(20,184,166,.14),transparent 60%),
   radial-gradient(540px 320px at 85% 15%,rgba(34,211,238,.16),transparent 60%),
   linear-gradient(180deg,rgba(7,6,11,.95),rgba(10,9,16,.98))}

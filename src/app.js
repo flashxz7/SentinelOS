@@ -1567,12 +1567,17 @@ function setActiveScenarioTab(name){
 }
 function setNavView(view,opts){
   opts=opts||{};
+  if(view!=='operations' && !viewEls[view]) view='operations';
   navState=view;
   document.querySelectorAll('.nav-item').forEach(function(item){
     item.classList.toggle('on',item.dataset.view===view);
   });
   Object.keys(viewEls).forEach(function(k){
-    if(viewEls[k]) viewEls[k].classList.toggle('on',k===view);
+    var el=viewEls[k];
+    if(!el) return;
+    var on=(k===view);
+    el.classList.toggle('on',on);
+    el.style.display=on?'block':'none';
   });
   if(view==='operations'){
     if(!opts.preserveScene){
