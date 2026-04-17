@@ -249,6 +249,171 @@ function renderWx(a){
     return '<div class="wx-c"><div class="wx-l">'+w.l+'</div><div class="wx-v">'+w.v+'<span class="wx-u"> '+w.u+'</span></div><div class="wx-d '+w.dir+'">'+w.d+'</div></div>'
   }).join('')
 }
+var weatherState={};
+var weatherInterval=null;
+function parseWxValue(v){
+  if(typeof v==='number') return v;
+  if(v==null) return NaN;
+  var num=parseFloat(String(v).replace(/[^0-9.-]/g,''));
+  return Number.isFinite(num)?num:NaN;
+}
+function weatherBias(scene,label){
+  var hot=scene==='fire';
+  var humid=scene==='flood';
+  if(label.indexOf('Temperature')===0){
+    return {min:hot?96:68,max:hot?112:92,drift:hot?0.08:0.03,jitter:0.16,decimals:1,unit:'F'};
+  }
+  if(label.indexOf('Humidity')===0){
+    return {min:hot?6:28,max:humid?100:70,drift:humid?0.12:-0.04,jitter:0.25,decimals:1,unit:'%'};
+  }
+  if(label.indexOf('Pressure')===0){
+    return {min:29.2,max:30.2,drift:humid?-0.005:0.002,jitter:0.01,decimals:2,unit:'inHg'};
+  }
+  if(label.indexOf('Wind Speed')===0){
+    return {min:0,max:hot?75:45,drift:hot?0.25:0.08,jitter:0.6,decimals:1,unit:'mph'};
+  }
+  if(label.indexOf('Wind Gust')===0){
+    return {min:0,max:hot?90:60,drift:hot?0.32:0.1,jitter:0.9,decimals:1,unit:'mph'};
+  }
+  if(label.indexOf('Rainfall')===0){
+    return {min:0,max:humid?6:2.5,drift:humid?0.05:-0.02,jitter:0.12,decimals:2,unit:'in/hr'};
+  }
+  if(label.indexOf('Visibility')===0){
+    return {min:0.1,max:10,drift:humid?-0.04:0.03,jitter:0.08,decimals:1,unit:'mi'};
+  }
+  if(label.indexOf('PM2.5')===0){
+    return {min:0,max:hot?500:250,drift:hot?1.2:0.6,jitter:2.5,decimals:0,unit:'AQI'};
+  }
+  return {min:0,max:100,drift:0.02,jitter:0.08,decimals:1,unit:''};
+}
+function formatTrend(delta,decimals,unit){
+  if(Math.abs(delta)<0.03) return 'Stable';
+  var sign=delta>=0?'+':'';
+  return sign+delta.toFixed(decimals)+unit+'/hr';
+}
+function initWeather(scene){
+  var s=S[scene];
+  if(!s||!s.wx) return;
+  weatherState[scene]=s.wx.map(function(w){
+    return {label:w.l,value:parseWxValue(w.v)};
+  });
+}
+function updateWeather(scene){
+  var s=S[scene];
+  if(!s||!s.wx) return;
+  if(!weatherState[scene]) initWeather(scene);
+  var state=weatherState[scene]||[];
+  s.wx.forEach(function(w,idx){
+    var st=state[idx];
+    if(!st||!Number.isFinite(st.value)) return;
+    var bias=weatherBias(scene,w.l);
+    var next=clamp(st.value+bias.drift+(Math.random()-.5)*bias.jitter,bias.min,bias.max);
+    var delta=next-st.value;
+    st.value=next;
+    w.v=next.toFixed(bias.decimals);
+    w.dir=delta>0.03?'up':delta<-0.03?'dn':'fl';
+    w.d=formatTrend(delta,bias.decimals,bias.unit);
+  });
+  renderWx(s.wx);
+}
+function clearWeatherTick(){
+  if(weatherInterval){clearInterval(weatherInterval);weatherInterval=null;}
+}
+function startWeatherTick(scene){
+  clearWeatherTick();
+  weatherInterval=setInterval(function(){updateWeather(scene);},1200);
+}
+function getWxSnapshot(scene){
+  var out={temp_f:null,humidity_pct:null,pressure_inhg:null,wind_mph:null,gust_mph:null,rain_in_hr:null,visibility_mi:null,pm25_aqi:null};
+  var wx=(S[scene]&&S[scene].wx)?S[scene].wx:[];
+  wx.forEach(function(w){
+    var val=parseWxValue(w.v);
+    if(!Number.isFinite(val)) return;
+    if(w.l.indexOf('Temperature')===0) out.temp_f=val;
+    else if(w.l.indexOf('Humidity')===0) out.humidity_pct=val;
+    else if(w.l.indexOf('Pressure')===0) out.pressure_inhg=val;
+    else if(w.l.indexOf('Wind Speed')===0) out.wind_mph=val;
+    else if(w.l.indexOf('Wind Gust')===0) out.gust_mph=val;
+    else if(w.l.indexOf('Rainfall')===0) out.rain_in_hr=val;
+    else if(w.l.indexOf('Visibility')===0) out.visibility_mi=val;
+    else if(w.l.indexOf('PM2.5')===0) out.pm25_aqi=val;
+  });
+  return out;
+}
+function escapeCsv(val){
+  if(val==null) return '';
+  var str=String(val);
+  if(str.indexOf('"')!==-1) str=str.replace(/"/g,'""');
+  if(/[",\n]/.test(str)) str='"'+str+'"';
+  return str;
+}
+function downloadCsv(rows,filename){
+  var csv=rows.map(function(r){return r.map(escapeCsv).join(',');}).join('\n');
+  var blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+  var link=document.createElement('a');
+  link.href=URL.createObjectURL(blob);
+  link.download=filename;
+  document.body.appendChild(link);
+  link.click();
+  setTimeout(function(){URL.revokeObjectURL(link.href);link.remove();},0);
+}
+function buildDataset(scene){
+  var ld=LD[scene];
+  if(!ld) return;
+  var headers=[
+    'timestamp','scene','drone_id','lat','lng','temp_f','humidity_pct','pressure_inhg','voc_ppb','gas_resistance_ohm','iaq','alt_m','speed_mps','battery_pct','rssi_dbm','heading_deg','cpu_pct','mcu_temp_c',
+    'wx_temp_f','wx_humidity_pct','wx_pressure_inhg','wx_wind_mph','wx_gust_mph','wx_rain_in_hr','wx_visibility_mi','wx_pm25_aqi'
+  ];
+  var rows=[headers];
+  var now=new Date();
+  var wxBase=getWxSnapshot(scene);
+  for(var m=60;m>=0;m--){
+    var ts=new Date(now.getTime()-m*60000);
+    var drift=Math.sin((60-m)/8)*0.04;
+    var wx={
+      temp_f:wxBase.temp_f==null?null:wxBase.temp_f+(Math.random()-.5)*0.6+drift,
+      humidity_pct:wxBase.humidity_pct==null?null:clamp(wxBase.humidity_pct+(Math.random()-.5)*1.2+drift*4,0,100),
+      pressure_inhg:wxBase.pressure_inhg==null?null:wxBase.pressure_inhg+(Math.random()-.5)*0.02+drift*0.1,
+      wind_mph:wxBase.wind_mph==null?null:Math.max(0,wxBase.wind_mph+(Math.random()-.5)*1.4+drift*6),
+      gust_mph:wxBase.gust_mph==null?null:Math.max(0,wxBase.gust_mph+(Math.random()-.5)*2.2+drift*8),
+      rain_in_hr:wxBase.rain_in_hr==null?null:Math.max(0,wxBase.rain_in_hr+(Math.random()-.5)*0.2+drift*0.6),
+      visibility_mi:wxBase.visibility_mi==null?null:Math.max(0.1,wxBase.visibility_mi+(Math.random()-.5)*0.2-drift*2),
+      pm25_aqi:wxBase.pm25_aqi==null?null:Math.max(0,wxBase.pm25_aqi+(Math.random()-.5)*6+drift*40)
+    };
+    ld.drones.forEach(function(d){
+      var temp=d.t+(Math.random()-.5)*0.8;
+      var hum=clamp(d.h+(Math.random()-.5)*1.2,0,100);
+      var pressure=d.p+(Math.random()-.5)*0.02;
+      var voc=Math.max(5,Math.round(d.voc+(Math.random()-.5)*8));
+      var gas=gasFromVoc(voc);
+      var iaq=iaqFromVoc(voc);
+      var alt=clamp(d.alt+(Math.random()-.5)*2,20,150);
+      var spd=clamp(d.spd+(Math.random()-.5)*0.8,0,18);
+      var batt=clamp(d.batt-((60-m)*0.02)+(Math.random()-.5)*0.5,5,100);
+      var rssi=d.rssi+Math.round((Math.random()-.5)*4);
+      var cpu=clamp(d.cpu+(Math.random()-.5)*4,6,60);
+      var mcu=clamp(d.mcu_t+(Math.random()-.5)*2,35,60);
+      var lat=d.lat+(Math.random()-.5)*0.00008;
+      var lng=d.lng+(Math.random()-.5)*0.00008;
+      var row=[
+        ts.toISOString(),scene,d.id,
+        lat.toFixed(5),lng.toFixed(5),
+        temp.toFixed(2),hum.toFixed(2),pressure.toFixed(3),voc,gas,iaq,
+        alt.toFixed(1),spd.toFixed(1),batt.toFixed(1),rssi,d.hdg,cpu.toFixed(0),mcu.toFixed(0),
+        wx.temp_f==null?'':wx.temp_f.toFixed(2),
+        wx.humidity_pct==null?'':wx.humidity_pct.toFixed(2),
+        wx.pressure_inhg==null?'':wx.pressure_inhg.toFixed(3),
+        wx.wind_mph==null?'':wx.wind_mph.toFixed(1),
+        wx.gust_mph==null?'':wx.gust_mph.toFixed(1),
+        wx.rain_in_hr==null?'':wx.rain_in_hr.toFixed(2),
+        wx.visibility_mi==null?'':wx.visibility_mi.toFixed(2),
+        wx.pm25_aqi==null?'':Math.round(wx.pm25_aqi)
+      ];
+      rows.push(row);
+    });
+  }
+  downloadCsv(rows,'sentinelos_'+scene+'_60min.csv');
+}
 function renderCmp(a){
   document.getElementById('cmp').innerHTML=
     '<div class="cmp-head"><span style="flex:1"></span><div class="cmp-vs"><span class="cs" style="min-width:60px;text-align:right;font-size:9px">Sentinel</span><span class="ca" style="min-width:60px;text-align:right;font-size:9px">Public API</span></div></div>'+
@@ -322,6 +487,7 @@ function formatAge(sec){
   return String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
 }
 function renderTickets(a){
+  a=a||[];
   a.forEach(function(t){
     if(!ticketState[t.id]){
       ticketState[t.id]={age:Math.floor(Math.random()*70)+20,stage:t.stage||1};
@@ -1640,6 +1806,8 @@ function setNavView(view,opts){
     } else {
       renderWorkViews(lastMapScene);
     }
+    renderTickets((S[lastMapScene]&&S[lastMapScene].tickets)?S[lastMapScene].tickets:[]);
+    bindTicketModal();
   } else {
     layout.style.display='none';
     sv.classList.remove('on');
@@ -1705,4 +1873,8 @@ setNavView('operations',{preserveScene:true});
 var exportBtn=document.getElementById('wx-export');
 if(exportBtn){
   exportBtn.addEventListener('click',function(){buildDataset(lastMapScene);});
+}
+var dataExportBtn=document.getElementById('data-export');
+if(dataExportBtn){
+  dataExportBtn.addEventListener('click',function(){buildDataset(lastMapScene);});
 }
