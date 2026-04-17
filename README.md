@@ -29,20 +29,6 @@ If the browser blocks local assets, run a local server:
 - python -m http.server 5173
 - then visit http://localhost:5173
 
-Generate Ticket Images
-----------------------
-Use the PowerShell terminal in VS Code and run from the Sentinel folder.
-
-1) Set your OpenRouter key:
-   - $env:OPENROUTER_API_KEY="YOUR_KEY"
-2) (Optional) Select the model:
-   - $env:OPENROUTER_MODEL="google/gemini-3-pro-image-preview"
-3) Install dependencies and run:
-   - python -m pip install -r requirements.txt
-   - python scripts/generate_ticket_images.py
-
-Images are written into assets/ using the filenames referenced in src/app.js.
-
 Configuration
 -------------
 See CONFIGURATION.md for environment variables and generator settings.
