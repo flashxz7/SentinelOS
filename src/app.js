@@ -90,7 +90,8 @@ function addDrone(d){
   var col=droneColor(d);
   var rot=(d.hdg||0)+'deg';
   var h='<div class="mini-drone" style="--md:'+col+';--rot:'+rot+'"><span></span></div>';
-  var m=L.marker([d.lat,d.lng],{icon:L.divIcon({html:h,className:'',iconSize:[18,18],iconAnchor:[9,9]})}).addTo(map);
+  var m=L.marker([d.lat,d.lng],{icon:L.divIcon({html:h,className:'drone-marker',iconSize:[18,18],iconAnchor:[9,9]})}).addTo(map);
+  m.on('click',function(){handleDroneClick(d);});
   droneMarkers[d.id]=m;
   layers.push(m);
 }
@@ -235,8 +236,13 @@ function renderFleet(a){
   }).join('')
 }
 function renderAlerts(a){
-  document.getElementById('alerts').innerHTML=a.map(function(x){
-    return '<div class="al s'+x.sev+'"><div class="al-top"><span class="al-name">'+x.name+'</span><span class="al-conf '+x.cCls+'">'+x.conf+'</span></div><div class="al-desc">'+x.desc+'</div><div class="al-foot"><span>'+x.time+'</span><span>'+x.drone+'</span></div></div>'
+  var el=document.getElementById('alerts');
+  if(!el) return;
+  el.innerHTML=a.map(function(x){
+    var coords=(x.lat!=null&&x.lng!=null)?'<div class="al-coords">Coords '+formatCoords(x.lat,x.lng)+'</div>':'';
+    var idAttr=x.id?' data-id="'+x.id+'"':'';
+    var droneAttr=x.drone?' data-drone="'+x.drone+'"':'';
+    return '<div class="al s'+x.sev+'"'+idAttr+droneAttr+'><div class="al-top"><span class="al-name">'+x.name+'</span><span class="al-conf '+x.cCls+'">'+x.conf+'</span></div><div class="al-desc">'+x.desc+'</div>'+coords+'<div class="al-foot"><span>'+x.time+'</span><span>'+x.drone+'</span></div></div>'
   }).join('')
 }
 function renderHud(a){
@@ -486,6 +492,36 @@ function formatAge(sec){
   var s=Math.floor(sec%60);
   return String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
 }
+function formatCoords(lat,lng){
+  var latDir=lat>=0?'N':'S';
+  var lngDir=lng>=0?'E':'W';
+  return Math.abs(lat).toFixed(4)+' '+latDir+', '+Math.abs(lng).toFixed(4)+' '+lngDir;
+}
+function flashFocus(el,cls){
+  if(!el) return;
+  el.classList.remove(cls);
+  void el.offsetWidth;
+  el.classList.add(cls);
+  setTimeout(function(){el.classList.remove(cls);},1400);
+}
+function focusTicketCard(id){
+  var list=document.getElementById('tickets');
+  if(!list||!id) return;
+  var card=list.querySelector('.tk[data-id="'+id+'"]');
+  if(card){
+    card.scrollIntoView({block:'center',behavior:'smooth'});
+    flashFocus(card,'focus');
+  }
+}
+function focusAlertCard(id){
+  var list=document.getElementById('alerts');
+  if(!list||!id) return;
+  var card=list.querySelector('.al[data-id="'+id+'"]');
+  if(card){
+    card.scrollIntoView({block:'center',behavior:'smooth'});
+    flashFocus(card,'focus');
+  }
+}
 function renderTickets(a){
   a=a||[];
   a.forEach(function(t){
@@ -556,6 +592,69 @@ function findTicketById(id){
     }
   }
   return null;
+}
+function findTicketByDrone(scene,droneId){
+  var s=S[scene];
+  if(!s||!s.tickets) return null;
+  for(var i=0;i<s.tickets.length;i++){
+    if(s.tickets[i].drone===droneId) return s.tickets[i];
+  }
+  return null;
+}
+function findAlertByDrone(scene,droneId){
+  var s=S[scene];
+  if(!s||!s.alerts) return null;
+  for(var i=0;i<s.alerts.length;i++){
+    if(s.alerts[i].drone===droneId) return s.alerts[i];
+  }
+  return null;
+}
+function findAlertById(scene,id){
+  var s=S[scene];
+  if(!s||!s.alerts) return null;
+  for(var i=0;i<s.alerts.length;i++){
+    if(s.alerts[i].id===id) return s.alerts[i];
+  }
+  return null;
+}
+function focusMap(lat,lng,zoom){
+  if(lat==null||lng==null) return;
+  map.setView([lat,lng],zoom||16,{animate:true});
+}
+function focusAlert(alert){
+  if(!alert) return;
+  focusMap(alert.lat,alert.lng,16);
+  focusAlertCard(alert.id);
+  if(alert.drone){
+    var t=findTicketByDrone(lastMapScene,alert.drone);
+    if(t){openTicketModal(t);focusTicketCard(t.id);}
+  }
+}
+function handleDroneClick(d){
+  if(!d) return;
+  setNavView('operations',{preserveScene:true});
+  var ticket=findTicketByDrone(lastMapScene,d.id);
+  if(ticket){
+    openTicketModal(ticket);
+    focusTicketCard(ticket.id);
+  } else {
+    var alert=findAlertByDrone(lastMapScene,d.id);
+    if(alert) focusAlert(alert);
+  }
+  focusMap(d.lat,d.lng,16);
+}
+var alertsBound=false;
+function bindAlertClicks(){
+  if(alertsBound) return;
+  var list=document.getElementById('alerts');
+  if(!list) return;
+  list.addEventListener('click',function(e){
+    var card=e.target.closest('.al');
+    if(!card) return;
+    var alert=findAlertById(lastMapScene,card.dataset.id);
+    if(alert) focusAlert(alert);
+  });
+  alertsBound=true;
 }
 function renderTicketModal(t){
   var modalBody=document.getElementById('tk-modal-body');
@@ -1191,6 +1290,61 @@ var lastFaultKey='';
 var autoRotateState={active:false,paused:false,base:0,raf:0,speed:0.08};
 var droneTiltState=null;
 var activeDronePart=null;
+var droneRoster=[];
+var droneIndex=0;
+var droneSwitcherBound=false;
+
+function seedFromId(id){
+  var sum=0;
+  for(var i=0;i<id.length;i++) sum=(sum*31+id.charCodeAt(i))%10000;
+  return sum;
+}
+function setDroneModelFromLive(d){
+  if(!d) return;
+  var seed=seedFromId(d.id);
+  var base=3800+(seed%240);
+  DRONE_STATE.id=d.id;
+  DRONE_STATE.mission=sceneLabel(lastMapScene);
+  DRONE_STATE.battery=d.batt;
+  DRONE_STATE.cpu=d.cpu;
+  DRONE_STATE.temp=d.mcu_t;
+  DRONE_STATE.rf=d.rssi;
+  DRONE_STATE.link=Math.round(clamp(102-Math.abs(d.rssi+60)*1.2,78,99));
+  DRONE_STATE.lidar=10+(seed%6);
+  DRONE_STATE.gas=d.voc;
+  DRONE_STATE.gps=10+(seed%4);
+  DRONE_STATE.rpm={
+    'prop-fl':base,
+    'prop-fr':base+40,
+    'prop-rl':base-30,
+    'prop-rr':base+20
+  };
+  DRONE_STATE.health=clamp(96-(100-d.batt)*0.35-Math.abs(d.rssi+60)*0.45,60,98);
+  var active=document.getElementById('dv-active');
+  if(active) active.textContent=d.id+' · '+d.state;
+}
+function selectDroneByIndex(idx){
+  if(!droneRoster.length) return;
+  droneIndex=(idx+droneRoster.length)%droneRoster.length;
+  var d=droneRoster[droneIndex];
+  setDroneModelFromLive(d);
+  renderDroneView();
+}
+function refreshDroneRoster(scene){
+  var ld=LD[scene];
+  if(!ld) return;
+  droneRoster=ld.drones.slice();
+  if(droneIndex>=droneRoster.length) droneIndex=0;
+  selectDroneByIndex(droneIndex);
+}
+function bindDroneSwitcher(){
+  if(droneSwitcherBound) return;
+  var prev=document.getElementById('dv-prev');
+  var next=document.getElementById('dv-next');
+  if(prev) prev.addEventListener('click',function(){selectDroneByIndex(droneIndex-1);});
+  if(next) next.addEventListener('click',function(){selectDroneByIndex(droneIndex+1);});
+  droneSwitcherBound=true;
+}
 
 function clamp(v,min,max){return Math.max(min,Math.min(max,v))}
 function statusLabel(s){return s==='fail'?'FAULT':s==='warn'?'WARN':'OK'}
@@ -1564,11 +1718,11 @@ var S={
       {id:'SNT-009',dot:'active',state:'Scanning',batt:58},{id:'SNT-010',dot:'standby',state:'Standby',batt:96}
     ],
     alerts:[
-      {name:'Stranded Individuals (3)',sev:'c',conf:'94.3%',cCls:'hi',desc:'3 people on rooftop near Guadalupe River crossing. Water rising at 0.83 ft/hr.',time:'2m 14s ago',drone:'SNT-001'},
-      {name:'Road Submerged: RR 1340',sev:'c',conf:'98.1%',cCls:'hi',desc:'RR 1340 southbound submerged ~3.5 ft. 4 vehicles stranded. Rising 0.4 ft/min.',time:'5m ago',drone:'SNT-003'},
-      {name:'Elderly Person Flagged',sev:'c',conf:'91.1%',cCls:'hi',desc:'Mobility-limited individual on porch, structure partially submerged.',time:'8m ago',drone:'SNT-002'},
-      {name:'Flash Flood Prediction',sev:'h',conf:'88.4%',cCls:'hi',desc:'Pressure drop 0.18 inHg/hr, gas resistance falling. Town Creek sector: T-20 min.',time:'11m ago',drone:'SNT-005'},
-      {name:'Bridge Debris Buildup',sev:'h',conf:'82.7%',cCls:'md',desc:'Debris accumulating on FM 1340 bridge supports. Load-bearing integrity at risk.',time:'14m ago',drone:'SNT-004'}
+      {id:'ALF-001',name:'Stranded Individuals (3)',sev:'c',conf:'94.3%',cCls:'hi',desc:'3 people on rooftop near Guadalupe River crossing. Water rising at 0.83 ft/hr.',time:'2m 14s ago',drone:'SNT-001',lat:30.0121,lng:-99.7998},
+      {id:'ALF-002',name:'Road Submerged: RR 1340',sev:'c',conf:'98.1%',cCls:'hi',desc:'RR 1340 southbound submerged ~3.5 ft. 4 vehicles stranded. Rising 0.4 ft/min.',time:'5m ago',drone:'SNT-003',lat:29.9960,lng:-99.7820},
+      {id:'ALF-003',name:'Elderly Person Flagged',sev:'c',conf:'91.1%',cCls:'hi',desc:'Mobility-limited individual on porch, structure partially submerged.',time:'8m ago',drone:'SNT-002',lat:30.0040,lng:-99.7880},
+      {id:'ALF-004',name:'Flash Flood Prediction',sev:'h',conf:'88.4%',cCls:'hi',desc:'Pressure drop 0.18 inHg/hr, gas resistance falling. Town Creek sector: T-20 min.',time:'11m ago',drone:'SNT-005',lat:30.0200,lng:-99.8080},
+      {id:'ALF-005',name:'Bridge Debris Buildup',sev:'h',conf:'82.7%',cCls:'md',desc:'Debris accumulating on FM 1340 bridge supports. Load-bearing integrity at risk.',time:'14m ago',drone:'SNT-004',lat:30.0100,lng:-99.8140}
     ],
     wx:[{l:'Temperature',v:'84.2',u:'F',d:'+2.1F/hr',dir:'up'},{l:'Humidity',v:'97.1',u:'%',d:'+4.3%/hr',dir:'up'},{l:'Pressure',v:'29.41',u:'inHg',d:'-0.18/hr',dir:'dn'},{l:'Wind Speed',v:'34',u:'mph',d:'+8 mph/hr',dir:'up'},{l:'Rainfall Rate',v:'3.2',u:'in/hr',d:'+1.1/hr',dir:'up'},{l:'Visibility',v:'0.4',u:'mi',d:'-0.3/hr',dir:'dn'}],
     cmp:[{m:'Temperature',s:'84.2F',a:'82F'},{m:'Humidity',s:'97.14%',a:'89%'},{m:'Pressure',s:'29.41 inHg',a:'29.52 inHg'},{m:'Wind',s:'34 mph NE',a:'22 mph N'},{m:'Rainfall',s:'3.2 in/hr',a:'1.8 in/hr'}],
@@ -1629,11 +1783,11 @@ var S={
       {id:'SNT-019',dot:'active',state:'Scanning',batt:81},{id:'SNT-020',dot:'standby',state:'Standby',batt:97}
     ],
     alerts:[
-      {name:'Trapped Individuals (2)',sev:'c',conf:'92.3%',cCls:'hi',desc:'2 people under partial collapse. Thermal imaging confirms motion in east wing rubble.',time:'3m ago',drone:'SNT-011'},
-      {name:'Gas Leak: Van Horn Main St',sev:'c',conf:'96.4%',cCls:'hi',desc:'VOC spike 342 ppb, gas resistance 3.2 kOhm. Gas rupture confirmed. Evacuate 200m.',time:'6m ago',drone:'SNT-013'},
-      {name:'Structure Collapse',sev:'c',conf:'97.1%',cCls:'hi',desc:'Commercial building Broadway Ave fully collapsed. Unknown occupant count.',time:'9m ago',drone:'SNT-015'},
-      {name:'Road Surface Displacement',sev:'h',conf:'89.2%',cCls:'hi',desc:'Major crack across US-90. Both lanes blocked. Emergency vehicles re-routed.',time:'12m ago',drone:'SNT-014'},
-      {name:'Person on Damaged Balcony',sev:'h',conf:'86.0%',cCls:'md',desc:'Individual on 2nd-floor balcony, load-bearing shear cracks detected.',time:'15m ago',drone:'SNT-011'}
+      {id:'ALQ-001',name:'Trapped Individuals (2)',sev:'c',conf:'92.3%',cCls:'hi',desc:'2 people under partial collapse. Thermal imaging confirms motion in east wing rubble.',time:'3m ago',drone:'SNT-011',lat:31.0450,lng:-104.8340},
+      {id:'ALQ-002',name:'Gas Leak: Van Horn Main St',sev:'c',conf:'96.4%',cCls:'hi',desc:'VOC spike 342 ppb, gas resistance 3.2 kOhm. Gas rupture confirmed. Evacuate 200m.',time:'6m ago',drone:'SNT-013',lat:31.0430,lng:-104.8260},
+      {id:'ALQ-003',name:'Structure Collapse',sev:'c',conf:'97.1%',cCls:'hi',desc:'Commercial building Broadway Ave fully collapsed. Unknown occupant count.',time:'9m ago',drone:'SNT-015',lat:31.0470,lng:-104.8360},
+      {id:'ALQ-004',name:'Road Surface Displacement',sev:'h',conf:'89.2%',cCls:'hi',desc:'Major crack across US-90. Both lanes blocked. Emergency vehicles re-routed.',time:'12m ago',drone:'SNT-014',lat:31.0510,lng:-104.8400},
+      {id:'ALQ-005',name:'Person on Damaged Balcony',sev:'h',conf:'86.0%',cCls:'md',desc:'Individual on 2nd-floor balcony, load-bearing shear cracks detected.',time:'15m ago',drone:'SNT-011',lat:31.0480,lng:-104.8320}
     ],
     wx:[{l:'Temperature',v:'72.4',u:'F',d:'Stable',dir:'fl'},{l:'Humidity',v:'44.8',u:'%',d:'+1.2%/hr',dir:'fl'},{l:'Pressure',v:'29.88',u:'inHg',d:'-0.05/hr',dir:'fl'},{l:'Wind Speed',v:'8',u:'mph',d:'Calm',dir:'fl'},{l:'PM2.5 AQI',v:'187',u:'AQI',d:'+64/hr',dir:'up'},{l:'Aftershock Risk',v:'HIGH',u:'',d:'M4.2+ likely',dir:'up'}],
     cmp:[{m:'Temperature',s:'72.41F',a:'73F'},{m:'Humidity',s:'44.83%',a:'42%'},{m:'Pressure',s:'29.88 inHg',a:'29.92 inHg'},{m:'PM2.5',s:'187 AQI',a:'120 AQI'},{m:'VOC Index',s:'342 ppb',a:'N/A'}],
@@ -1685,11 +1839,11 @@ var S={
       {id:'SNT-029',dot:'active',state:'Scanning',batt:83},{id:'SNT-030',dot:'standby',state:'Standby',batt:98}
     ],
     alerts:[
-      {name:'Family Stranded (4)',sev:'c',conf:'93.2%',cCls:'hi',desc:'Family of 4 surrounded by advancing fire. Road CR-435 fully blocked. T-18 min to structure.',time:'1m ago',drone:'SNT-021'},
-      {name:'VOC / PM2.5 Critical',sev:'c',conf:'99.0%',cCls:'hi',desc:'IAQ 412, gas resistance 0.84 kOhm, VOC 890 ppb. Hazardous. Thermal required.',time:'4m ago',drone:'SNT-023'},
-      {name:'Fire Line Advancing NE',sev:'c',conf:'95.4%',cCls:'hi',desc:'Fire front at 1.2 mi/hr NE. 3 properties in path. Gusts 67 mph.',time:'7m ago',drone:'SNT-025'},
-      {name:'Stranded Rancher',sev:'h',conf:'87.3%',cCls:'md',desc:'Individual on ridgeline, fire blocking all descent routes. Waving confirmed.',time:'10m ago',drone:'SNT-021'},
-      {name:'Power Line Down',sev:'h',conf:'91.1%',cCls:'hi',desc:'Downed line sparking on FM 570. Secondary ignition risk.',time:'13m ago',drone:'SNT-024'}
+      {id:'ALW-001',name:'Family Stranded (4)',sev:'c',conf:'93.2%',cCls:'hi',desc:'Family of 4 surrounded by advancing fire. Road CR-435 fully blocked. T-18 min to structure.',time:'1m ago',drone:'SNT-021',lat:32.4060,lng:-98.8280},
+      {id:'ALW-002',name:'VOC / PM2.5 Critical',sev:'c',conf:'99.0%',cCls:'hi',desc:'IAQ 412, gas resistance 0.84 kOhm, VOC 890 ppb. Hazardous. Thermal required.',time:'4m ago',drone:'SNT-023',lat:32.4180,lng:-98.8420},
+      {id:'ALW-003',name:'Fire Line Advancing NE',sev:'c',conf:'95.4%',cCls:'hi',desc:'Fire front at 1.2 mi/hr NE. 3 properties in path. Gusts 67 mph.',time:'7m ago',drone:'SNT-025',lat:32.4120,lng:-98.8200},
+      {id:'ALW-004',name:'Stranded Rancher',sev:'h',conf:'87.3%',cCls:'md',desc:'Individual on ridgeline, fire blocking all descent routes. Waving confirmed.',time:'10m ago',drone:'SNT-021',lat:32.3960,lng:-98.7980},
+      {id:'ALW-005',name:'Power Line Down',sev:'h',conf:'91.1%',cCls:'hi',desc:'Downed line sparking on FM 570. Secondary ignition risk.',time:'13m ago',drone:'SNT-024',lat:32.3920,lng:-98.7900}
     ],
     wx:[{l:'Temperature',v:'104.3',u:'F',d:'+3.8F/hr',dir:'up'},{l:'Humidity',v:'11.2',u:'%',d:'-4.1%/hr',dir:'dn'},{l:'Wind Speed',v:'48',u:'mph',d:'+12 mph/hr',dir:'up'},{l:'Wind Gusts',v:'67',u:'mph',d:'Sustained',dir:'up'},{l:'PM2.5 AQI',v:'412',u:'AQI',d:'Hazardous',dir:'up'},{l:'Visibility',v:'0.2',u:'mi',d:'-0.5/hr',dir:'dn'}],
     cmp:[{m:'Temperature',s:'104.3F',a:'96F'},{m:'Humidity',s:'11.24%',a:'18%'},{m:'Wind',s:'48 mph NE',a:'31 mph N'},{m:'PM2.5',s:'412 AQI',a:'245 AQI'},{m:'VOC / Gas Resist.',s:'890 ppb / 0.84kOhm',a:'N/A'}],
@@ -1769,6 +1923,15 @@ var layout=document.getElementById('layout');
 var sv=document.getElementById('sv');
 var dv=document.getElementById('dv');
 var navState='operations';
+var navCollapsed=false;
+function bindNavToggle(){
+  var btn=document.getElementById('nav-toggle');
+  if(!btn) return;
+  btn.addEventListener('click',function(){
+    navCollapsed=!navCollapsed;
+    document.body.classList.toggle('nav-collapsed',navCollapsed);
+  });
+}
 var viewEls={
   fleet:document.getElementById('view-fleet'),
   telemetry:document.getElementById('view-telemetry'),
@@ -1847,12 +2010,12 @@ document.querySelectorAll('.tab').forEach(function(btn){
       sv.classList.remove('on');
       if(dv) dv.classList.add('on');
       curScene='drone';
-      DRONE_STATE.mission=sceneLabel(lastMapScene);
+      refreshDroneRoster(lastMapScene);
+      bindDroneSwitcher();
       bindDroneHotspots();
       bindDroneTilt();
       bindDroneModes();
       setDroneMode('inspect');
-      renderDroneView();
       startDroneAutoRotate();
       startDroneTick();
     } else {
@@ -1869,6 +2032,8 @@ document.querySelectorAll('.tab').forEach(function(btn){
 initFeed('flood');
 loadScene('flood');
 bindTicketModal();
+bindAlertClicks();
+bindNavToggle();
 setNavView('operations',{preserveScene:true});
 var exportBtn=document.getElementById('wx-export');
 if(exportBtn){

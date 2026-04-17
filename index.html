@@ -20,6 +20,7 @@
 <!-- TOPBAR -->
 <div class="topbar">
   <div class="topbar-l">
+    <button class="nav-toggle" id="nav-toggle" title="Toggle navigation" aria-label="Toggle navigation"><span></span></button>
     <div class="logo">
       <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
         <line x1="12" y1="12" x2="5.5" y2="5.5"/><line x1="12" y1="12" x2="18.5" y2="5.5"/>
@@ -32,27 +33,39 @@
     <span class="logo-name">SentinelOS<span class="logo-ver">v2.4.1</span></span>
   </div>
   <div class="tabs">
+    <div class="tab-label">Scenes</div>
     <button class="tab on" data-s="flood"><span class="tdot flood"></span>Hill Country Flood</button>
     <button class="tab" data-s="quake"><span class="tdot quake"></span>Culberson County</button>
     <button class="tab" data-s="fire"><span class="tdot fire"></span>Eastland Complex</button>
     <div class="tsep"></div>
+    <div class="tab-label">Diagnostics</div>
     <button class="tab" data-s="stream"><span class="tdot stream"></span>Sensor Stream</button>
     <div class="tsep"></div>
+    <div class="tab-label">Model</div>
     <button class="tab" data-s="drone"><span class="tdot drone"></span>Drone Model</button>
   </div>
   <div class="topbar-r">
-    <div class="sys-h">
-      <div class="hi"><div class="hl">Inference</div><div class="hv" id="h-inf">143ms</div></div>
-      <div class="hsep"></div>
-      <div class="hi"><div class="hl">GPS Lock</div><div class="hv" id="h-gps">4/4</div></div>
-      <div class="hsep"></div>
-      <div class="hi"><div class="hl">Uptime</div><div class="hv" id="h-up">06:14:32</div></div>
-      <div class="hsep"></div>
-      <div class="hi"><div class="hl">Pkt/s</div><div class="hv" id="h-pkt">12.4</div></div>
+    <div class="topbar-group">
+      <span class="group-label">System</span>
+      <div class="sys-h">
+        <div class="hi"><div class="hl">Inference</div><div class="hv" id="h-inf">143ms</div></div>
+        <div class="hsep"></div>
+        <div class="hi"><div class="hl">GPS Lock</div><div class="hv" id="h-gps">4/4</div></div>
+        <div class="hsep"></div>
+        <div class="hi"><div class="hl">Uptime</div><div class="hv" id="h-up">06:14:32</div></div>
+        <div class="hsep"></div>
+        <div class="hi"><div class="hl">Pkt/s</div><div class="hv" id="h-pkt">12.4</div></div>
+      </div>
     </div>
-    <button class="data-export" id="data-export">Export Dataset</button>
-    <div class="live"><span class="ldot"></span>LIVE</div>
-    <div class="clock" id="clock"></div>
+    <div class="topbar-group">
+      <span class="group-label">Actions</span>
+      <button class="data-export" id="data-export">Export Dataset</button>
+    </div>
+    <div class="topbar-group">
+      <span class="group-label">Status</span>
+      <div class="live"><span class="ldot"></span>LIVE</div>
+      <div class="clock" id="clock"></div>
+    </div>
   </div>
 </div>
 
@@ -211,6 +224,11 @@
     <div class="dv-title">
       <div class="dv-name">Sentinel Drone Model</div>
       <div class="dv-sub" id="dv-sub">SNT-AX9 | Live diagnostics feed</div>
+    </div>
+    <div class="dv-switch">
+      <button class="dv-switch-btn" id="dv-prev">Prev</button>
+      <div class="dv-switch-label" id="dv-active">SNT-001 · Scanning</div>
+      <button class="dv-switch-btn" id="dv-next">Next</button>
     </div>
     <div class="dv-modes" id="dv-modes">
       <button class="dv-mode on" data-mode="inspect">Inspect</button>
