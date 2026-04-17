@@ -64,12 +64,12 @@
     </div>
     <div class="nav">
       <div class="nav-title">Navigation</div>
-      <div class="nav-item on"><span></span>Operations</div>
-      <div class="nav-item"><span></span>Fleet</div>
-      <div class="nav-item"><span></span>Telemetry</div>
-      <div class="nav-item"><span></span>Maintenance</div>
-      <div class="nav-item"><span></span>Sources</div>
-      <div class="nav-item"><span></span>Settings</div>
+      <div class="nav-item on" data-view="operations"><span></span>Operations</div>
+      <div class="nav-item" data-view="fleet"><span></span>Fleet</div>
+      <div class="nav-item" data-view="telemetry"><span></span>Telemetry</div>
+      <div class="nav-item" data-view="maintenance"><span></span>Maintenance</div>
+      <div class="nav-item" data-view="sources"><span></span>Sources</div>
+      <div class="nav-item" data-view="settings"><span></span>Settings</div>
     </div>
     <div class="sb-card">
       <div class="sb-title">System Status</div>
@@ -285,6 +285,195 @@
       <div class="dv-issues" id="dv-issues"></div>
     </div>
     </div>
+
+    <!-- WORKSPACE VIEWS -->
+    <div class="view view-fleet" id="view-fleet">
+      <div class="view-header">
+        <div>
+          <div class="view-kicker">Fleet director</div>
+          <div class="view-title">Fleet Operations</div>
+          <div class="view-sub">Live utilization, readiness, and dispatch posture</div>
+        </div>
+        <div class="view-actions">
+          <button class="chip">Shift Log</button>
+          <button class="chip primary">Deploy Reserve</button>
+        </div>
+      </div>
+      <div class="view-grid fleet-grid">
+        <div class="view-card fleet-table">
+          <div class="card-head">
+            <div>
+              <div class="card-title">Active Fleet</div>
+              <div class="card-sub">Airframes in mission rotation</div>
+            </div>
+            <div class="card-tags" id="fleet-summary"></div>
+          </div>
+          <div class="fleet-head">
+            <span>Drone</span>
+            <span>Status</span>
+            <span>Battery</span>
+            <span>Alt</span>
+            <span>Speed</span>
+            <span>Heading</span>
+            <span>Link</span>
+            <span>Last Ping</span>
+          </div>
+          <div class="fleet-rows" id="fleet-rows"></div>
+        </div>
+        <div class="view-col">
+          <div class="view-card fleet-metrics">
+            <div class="card-title">Readiness</div>
+            <div class="metric-grid" id="fleet-metrics"></div>
+          </div>
+          <div class="view-card fleet-queue">
+            <div class="card-title">Dispatch Queue</div>
+            <div class="queue-list" id="fleet-queue"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="view view-telemetry" id="view-telemetry">
+      <div class="view-header">
+        <div>
+          <div class="view-kicker">Telemetry spine</div>
+          <div class="view-title">Signal Observatory</div>
+          <div class="view-sub">Sensor health, anomaly spikes, and live packet flow</div>
+        </div>
+        <div class="view-actions">
+          <button class="chip">Export Snapshot</button>
+          <button class="chip primary">Mark Anomaly</button>
+        </div>
+      </div>
+      <div class="view-grid telemetry-grid">
+        <div class="view-card telemetry-panel">
+          <div class="card-head">
+            <div>
+              <div class="card-title">Telemetry Envelope</div>
+              <div class="card-sub">Rolling 15 minute window</div>
+            </div>
+            <div class="card-tags" id="telemetry-kpis"></div>
+          </div>
+          <div class="telemetry-series" id="telemetry-series"></div>
+        </div>
+        <div class="view-card telemetry-stream">
+          <div class="card-head">
+            <div>
+              <div class="card-title">Live Packet Stream</div>
+              <div class="card-sub">Ingest backbone · 2.4 Hz</div>
+            </div>
+            <span class="status-pill">Streaming</span>
+          </div>
+          <div class="telemetry-feed" id="telemetry-feed"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="view view-maintenance" id="view-maintenance">
+      <div class="view-header">
+        <div>
+          <div class="view-kicker">Service horizon</div>
+          <div class="view-title">Maintenance Control</div>
+          <div class="view-sub">Health rollups and planned interventions</div>
+        </div>
+        <div class="view-actions">
+          <button class="chip">Schedule Downtime</button>
+          <button class="chip primary">Generate Work Order</button>
+        </div>
+      </div>
+      <div class="view-grid maintenance-grid">
+        <div class="view-card maint-schedule">
+          <div class="card-title">Service Timeline</div>
+          <div class="maint-list" id="maint-list"></div>
+        </div>
+        <div class="view-card maint-health">
+          <div class="card-title">Component Health</div>
+          <div class="maint-bars" id="maint-bars"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="view view-sources" id="view-sources">
+      <div class="view-header">
+        <div>
+          <div class="view-kicker">Signal provenance</div>
+          <div class="view-title">Data Sources</div>
+          <div class="view-sub">Coverage, latency, and trust posture</div>
+        </div>
+        <div class="view-actions">
+          <button class="chip">Audit Trail</button>
+          <button class="chip primary">Add Source</button>
+        </div>
+      </div>
+      <div class="view-grid sources-grid">
+        <div class="view-card source-board">
+          <div class="card-head">
+            <div>
+              <div class="card-title">Active Providers</div>
+              <div class="card-sub">Live health checks and SLA status</div>
+            </div>
+            <span class="status-pill ok">All green</span>
+          </div>
+          <div class="source-grid" id="source-grid"></div>
+        </div>
+        <div class="view-card source-insights" id="source-insights"></div>
+      </div>
+    </div>
+
+    <div class="view view-settings" id="view-settings">
+      <div class="view-header">
+        <div>
+          <div class="view-kicker">Operator console</div>
+          <div class="view-title">Settings and Controls</div>
+          <div class="view-sub">Profiles, alerts, and governance</div>
+        </div>
+        <div class="view-actions">
+          <button class="chip">Reset Layout</button>
+          <button class="chip primary">Save Changes</button>
+        </div>
+      </div>
+      <div class="settings-grid">
+        <div class="view-card settings-card">
+          <div class="card-title">Operator Profile</div>
+          <div class="settings-row"><span>Role</span><span class="setting-value">Ops Analyst</span></div>
+          <div class="settings-row"><span>Region</span><span class="setting-value" id="settings-region">Central</span></div>
+          <div class="settings-row"><span>Shift</span><span class="setting-value">Delta</span></div>
+          <div class="settings-row"><span>Auth Tier</span><span class="setting-value">Level 3</span></div>
+        </div>
+        <div class="view-card settings-card">
+          <div class="card-title">Alert Thresholds</div>
+          <div class="settings-row"><span>Critical SLA</span><span class="setting-value">6 minutes</span></div>
+          <div class="settings-row"><span>Escalation Window</span><span class="setting-value">2 minutes</span></div>
+          <div class="settings-row"><span>Auto Dispatch</span><span class="setting-value">Enabled</span></div>
+          <div class="settings-row"><span>After Action</span><span class="setting-value">Required</span></div>
+        </div>
+        <div class="view-card settings-card">
+          <div class="card-title">Data Governance</div>
+          <div class="settings-row"><span>Retention</span><span class="setting-value">365 days</span></div>
+          <div class="settings-row"><span>Chain of Custody</span><span class="setting-value">Strict</span></div>
+          <div class="settings-row"><span>External Sharing</span><span class="setting-value">Restricted</span></div>
+          <div class="settings-row"><span>Audit Mode</span><span class="setting-value">Always on</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="tk-modal" id="tk-modal" aria-hidden="true">
+  <div class="tk-modal-backdrop" data-close="1"></div>
+  <div class="tk-modal-card" role="dialog" aria-modal="true">
+    <div class="tk-modal-head">
+      <div>
+        <div class="tk-modal-kicker" id="tk-modal-kicker">Mission Ticket</div>
+        <div class="tk-modal-title" id="tk-modal-title">Ticket Details</div>
+      </div>
+      <div class="tk-modal-actions">
+        <button class="chip">Download Brief</button>
+        <button class="chip primary" id="tk-modal-primary">Dispatch</button>
+        <button class="tk-modal-close" id="tk-modal-close" aria-label="Close">×</button>
+      </div>
+    </div>
+    <div class="tk-modal-body" id="tk-modal-body"></div>
   </div>
 </div>
 

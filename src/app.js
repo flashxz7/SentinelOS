@@ -359,11 +359,318 @@ function renderTickets(a){
       +'</div></div>'
   }).join('')
 }
+
+function findTicketById(id){
+  var scenes=['flood','quake','fire'];
+  for(var i=0;i<scenes.length;i++){
+    var s=S[scenes[i]];
+    if(!s||!s.tickets) continue;
+    for(var j=0;j<s.tickets.length;j++){
+      if(s.tickets[j].id===id) return s.tickets[j];
+    }
+  }
+  return null;
+}
+function renderTicketModal(t){
+  var modalBody=document.getElementById('tk-modal-body');
+  var modalTitle=document.getElementById('tk-modal-title');
+  var modalKicker=document.getElementById('tk-modal-kicker');
+  var modalPrimary=document.getElementById('tk-modal-primary');
+  if(!modalBody||!t) return;
+  var media=buildTicketMedia(t);
+  var st=ticketState[t.id]||{age:0,stage:0};
+  var pipeline=t.pipeline||['ingest','analyze','review','dispatch'];
+  var stage=Math.min(st.stage||0,pipeline.length-1);
+  var progress=Math.round(((stage+1)/pipeline.length)*100);
+  var severity=t.p||'high';
+  var badges=(t.tags||[]).map(function(tag){return '<span class="tk-badge">'+tag+'</span>'}).join('');
+  var sources=(t.sources||[]).map(function(src){return '<span class="tk-badge">'+src+'</span>'}).join('');
+  var actions=(t.actions||[]).map(function(a){return '<span class="tk-act '+a.cls+'">'+a.label+'</span>'}).join('');
+  var timeline=pipeline.map(function(p,i){return '<span class="'+(i===stage?'on':'')+'">'+p+'</span>'}).join('');
+  var hero='<div class="tk-modal-hero"><img alt="'+media[0].label+'" src="'+media[0].src+'">'+renderMlOverlay(media[0].ml)+'</div>';
+  var film='<div class="tk-film">'
+    +media.map(function(m){
+      return '<div class="tk-film-item"><img alt="'+m.label+'" src="'+m.src+'"></div>';
+    }).join('')+'</div>';
+  var summary='<div class="tk-side-card"><div class="tk-side-title">Mission Summary</div>'
+    +'<div class="tk-modal-desc">'+t.desc+'</div>'
+    +'<div class="tk-badges">'+badges+'</div>'
+    +'<div class="tk-actions">'+actions+'</div>'
+    +'</div>';
+  var main='<div class="tk-modal-main">'
+    +hero
+    +'<div class="tk-progress"><div class="tk-progress-bar" style="width:'+progress+'%"></div></div>'
+    +film
+    +summary
+    +'</div>';
+  var side='<div class="tk-modal-side">'
+    +'<div class="tk-side-card"><div class="tk-side-title">Mission Control</div>'
+    +'<div class="tk-side-row"><span>Status</span><b>'+t.status+'</b></div>'
+    +'<div class="tk-side-row"><span>SLA</span><b>'+t.sla+'</b></div>'
+    +'<div class="tk-side-row"><span>ETA</span><b>'+t.eta+'</b></div>'
+    +'<div class="tk-side-row"><span>Assigned Drone</span><b>'+t.drone+'</b></div>'
+    +'<div class="tk-side-row"><span>Confidence</span><b>'+t.conf+'</b></div>'
+    +'</div>'
+    +'<div class="tk-side-card"><div class="tk-side-title">Pipeline</div>'
+    +'<div class="tk-timeline-xl">'+timeline+'</div>'
+    +'</div>'
+    +'<div class="tk-side-card"><div class="tk-side-title">Location + Capture</div>'
+    +'<div class="tk-side-row"><span>GPS</span><b>'+t.gps+'</b></div>'
+    +'<div class="tk-side-row"><span>Captured</span><b>'+t.captured+'</b></div>'
+    +'<div class="tk-side-row"><span>Sensor</span><b>'+t.sensor+'</b></div>'
+    +'<div class="tk-side-row"><span>Altitude</span><b>'+t.alt+'</b></div>'
+    +'<div class="tk-side-row"><span>Heading</span><b>'+t.heading+'</b></div>'
+    +'</div>'
+    +'<div class="tk-side-card"><div class="tk-side-title">Evidence Chain</div>'
+    +'<div class="tk-side-row"><span>Signed</span><b>'+t.custody+'</b></div>'
+    +'<div class="tk-side-row"><span>Approved</span><b>'+t.approval.by+'</b></div>'
+    +'<div class="tk-side-row"><span>Timestamp</span><b>'+t.approval.time+'</b></div>'
+    +'<div class="tk-side-row"><span>Sources</span><b>Live</b></div>'
+    +'<div class="tk-badges">'+sources+'</div>'
+    +'</div>'
+    +'</div>';
+  modalBody.innerHTML=main+side;
+  if(modalTitle) modalTitle.textContent=t.t;
+  if(modalKicker) modalKicker.textContent=t.id+' - '+severity.toUpperCase();
+  if(modalPrimary){
+    modalPrimary.textContent=t.status==='Pending'?'Approve Dispatch':t.status==='En Route'?'Track Mission':'Dispatch';
+  }
+}
+function openTicketModal(t){
+  var modal=document.getElementById('tk-modal');
+  if(!modal||!t) return;
+  renderTicketModal(t);
+  modal.classList.add('on');
+  modal.setAttribute('aria-hidden','false');
+}
+function closeTicketModal(){
+  var modal=document.getElementById('tk-modal');
+  if(!modal) return;
+  modal.classList.remove('on');
+  modal.setAttribute('aria-hidden','true');
+}
+function bindTicketModal(){
+  var modal=document.getElementById('tk-modal');
+  var closeBtn=document.getElementById('tk-modal-close');
+  if(closeBtn){closeBtn.addEventListener('click',closeTicketModal);}
+  if(modal){
+    modal.addEventListener('click',function(e){
+      if(e.target&&e.target.dataset&&e.target.dataset.close){closeTicketModal();}
+    });
+  }
+  document.addEventListener('keydown',function(e){
+    if(e.key==='Escape') closeTicketModal();
+  });
+  var list=document.getElementById('tickets');
+  if(list){
+    list.addEventListener('click',function(e){
+      var card=e.target.closest('.tk');
+      if(!card) return;
+      var t=findTicketById(card.dataset.id);
+      if(t) openTicketModal(t);
+    });
+  }
+}
 function renderSources(s){
   var el=document.getElementById('sources');if(!el||!s||!s.sources)return;
   el.innerHTML=s.sources.map(function(src){
     return '<div class="src-row"><span class="src-tag">'+src.name+'</span><span class="src-link">'+src.detail+'</span></div>';
   }).join('');
+}
+
+var telemetrySeries={};
+var telemetryLines=[];
+var maintState={};
+
+function avg(list,key){
+  if(!list||!list.length) return 0;
+  var sum=0;list.forEach(function(x){sum+=x[key]||0});
+  return sum/list.length;
+}
+function ensureSeries(scene,key,base){
+  if(!telemetrySeries[scene]) telemetrySeries[scene]={};
+  if(!telemetrySeries[scene][key]){
+    telemetrySeries[scene][key]=[];
+    for(var i=0;i<18;i++) telemetrySeries[scene][key].push(base+(Math.random()-.5)*base*0.03);
+  }
+}
+function getSeries(scene,key,base,drift,min,max){
+  ensureSeries(scene,key,base);
+  var s=telemetrySeries[scene][key];
+  var last=s[s.length-1];
+  var next=last+(Math.random()-.5)*drift;
+  if(min!=null) next=Math.max(min,next);
+  if(max!=null) next=Math.min(max,next);
+  s.push(next);
+  if(s.length>26) s.shift();
+  return s;
+}
+function renderFleetView(scene){
+  var ld=LD[scene];if(!ld) return;
+  var drones=ld.drones;
+  var counts={active:0,transit:0,delivery:0,standby:0};
+  drones.forEach(function(d){if(counts[d.dot]!=null) counts[d.dot]+=1});
+  var avgBatt=Math.round(avg(drones,'batt'));
+  var avgAlt=Math.round(avg(drones,'alt'));
+  var avgSpd=avg(drones,'spd').toFixed(1);
+  var avgRssi=Math.round(avg(drones,'rssi'));
+  var summary=document.getElementById('fleet-summary');
+  if(summary){
+    summary.innerHTML=''
+      +'<span class="stat-chip">Active '+counts.active+'</span>'
+      +'<span class="stat-chip">Transit '+counts.transit+'</span>'
+      +'<span class="stat-chip">Delivery '+counts.delivery+'</span>'
+      +'<span class="stat-chip">Standby '+counts.standby+'</span>';
+  }
+  var metrics=document.getElementById('fleet-metrics');
+  if(metrics){
+    metrics.innerHTML=''
+      +'<div class="metric-item"><span>Avg Battery</span><b>'+avgBatt+'%</b></div>'
+      +'<div class="metric-item"><span>Avg Altitude</span><b>'+avgAlt+' m</b></div>'
+      +'<div class="metric-item"><span>Avg Speed</span><b>'+avgSpd+' m/s</b></div>'
+      +'<div class="metric-item"><span>Avg Link</span><b>'+avgRssi+' dBm</b></div>';
+  }
+  var rows=document.getElementById('fleet-rows');
+  if(rows){
+    rows.innerHTML=drones.map(function(d){
+      var col=droneColor(d);
+      var batt=Math.round(d.batt);
+      var ping=(Math.random()*2+0.3).toFixed(1)+'s';
+      return '<div class="fleet-row">'
+        +'<div class="fleet-id">'+d.id+'</div>'
+        +'<div class="fleet-state"><span class="fleet-dot" style="background:'+col+';box-shadow:0 0 8px '+col+'"></span>'+d.state+'</div>'
+        +'<div class="fleet-batt"><div class="fleet-bar"><span style="width:'+batt+'%"></span></div><span>'+batt+'%</span></div>'
+        +'<div>'+d.alt.toFixed(0)+' m</div>'
+        +'<div>'+d.spd.toFixed(1)+' m/s</div>'
+        +'<div>'+d.hdg+' deg</div>'
+        +'<div>'+d.rssi+' dBm</div>'
+        +'<div>'+ping+'</div>'
+        +'</div>';
+    }).join('');
+  }
+  var queue=document.getElementById('fleet-queue');
+  if(queue){
+    var items=(S[scene]&&S[scene].tickets)?S[scene].tickets.slice(0,3):[];
+    queue.innerHTML=items.map(function(t){
+      return '<div class="queue-item"><h4>'+t.t+'</h4><p>'+t.desc+'</p>'
+        +'<div class="queue-meta"><span>'+t.status+'</span><span>'+t.eta+'</span><span>'+t.drone+'</span></div></div>';
+    }).join('');
+  }
+}
+function renderTelemetryView(scene){
+  var ld=LD[scene];if(!ld) return;
+  var drones=ld.drones;
+  var avgTemp=avg(drones,'t');
+  var avgHum=avg(drones,'h');
+  var avgVoc=avg(drones,'voc');
+  var avgIaq=avg(drones,'iaq');
+  var anomalies=drones.filter(function(d){return d.iaq>200||d.t>100||d.h<12}).length;
+  var kpi=document.getElementById('telemetry-kpis');
+  if(kpi){
+    kpi.innerHTML=''
+      +'<span class="stat-chip">Avg IAQ '+Math.round(avgIaq)+'</span>'
+      +'<span class="stat-chip">Avg VOC '+Math.round(avgVoc)+' ppb</span>'
+      +'<span class="stat-chip">Anomalies '+anomalies+'</span>'
+      +'<span class="stat-chip">Uplink 2.4 Hz</span>';
+  }
+  var series=document.getElementById('telemetry-series');
+  if(series){
+    var tempSeries=getSeries(scene,'temp',avgTemp,0.6,avgTemp-6,avgTemp+6);
+    var humSeries=getSeries(scene,'hum',avgHum,0.9,0,100);
+    var vocSeries=getSeries(scene,'voc',avgVoc,8,0,1200);
+    var iaqSeries=getSeries(scene,'iaq',avgIaq,6,0,500);
+    series.innerHTML=''
+      +'<div class="telemetry-card"><h4>Temperature</h4><div class="telemetry-val">'+avgTemp.toFixed(1)+' F</div>'
+      +buildSparkline(tempSeries,'#f59e0b')+'</div>'
+      +'<div class="telemetry-card"><h4>Humidity</h4><div class="telemetry-val">'+avgHum.toFixed(1)+'%</div>'
+      +buildSparkline(humSeries,'#22d3ee')+'</div>'
+      +'<div class="telemetry-card"><h4>VOC Index</h4><div class="telemetry-val">'+Math.round(avgVoc)+' ppb</div>'
+      +buildSparkline(vocSeries,'#ef4444')+'</div>'
+      +'<div class="telemetry-card"><h4>IAQ</h4><div class="telemetry-val">'+Math.round(avgIaq)+'</div>'
+      +buildSparkline(iaqSeries,'#a3e635')+'</div>';
+  }
+}
+function tickTelemetryFeed(scene){
+  var line=makeFeedLine(scene);
+  telemetryLines.push(line);
+  if(telemetryLines.length>40) telemetryLines.shift();
+  var feed=document.getElementById('telemetry-feed');
+  if(feed) feed.innerHTML=telemetryLines.slice().reverse().join('');
+}
+function seedTelemetryFeed(scene){
+  telemetryLines=[];
+  for(var i=0;i<18;i++) telemetryLines.push(makeFeedLine(scene));
+  tickTelemetryFeed(scene);
+}
+function ensureMaint(scene){
+  if(!maintState[scene]){
+    maintState[scene]={rotor:82,battery:76,sensors:88,rf:92,nav:90,airframe:86};
+  }
+}
+function renderMaintenanceView(scene){
+  ensureMaint(scene);
+  var ms=maintState[scene];
+  Object.keys(ms).forEach(function(k){
+    ms[k]=Math.max(58,Math.min(99,ms[k]+(Math.random()-.5)*1.2));
+  });
+  var list=document.getElementById('maint-list');
+  if(list){
+    var drones=LD[scene].drones.slice().sort(function(a,b){return a.batt-b.batt}).slice(0,4);
+    list.innerHTML=drones.map(function(d,idx){
+      var due=(idx+1)*3.2;
+      return '<div class="maint-item"><div><h4>'+d.id+' service check</h4>'
+        +'<p>Battery '+Math.round(d.batt)+'% · '+d.state+' · Rotor cycle '+(1200+idx*34)+'</p></div>'
+        +'<span class="maint-status">Due '+due.toFixed(1)+' h</span></div>';
+    }).join('');
+  }
+  var bars=document.getElementById('maint-bars');
+  if(bars){
+    bars.innerHTML=''
+      +'<div class="maint-bar"><span>Rotor Health</span><div class="bar"><i style="width:'+ms.rotor.toFixed(0)+'%"></i></div></div>'
+      +'<div class="maint-bar"><span>Battery Reserve</span><div class="bar"><i style="width:'+ms.battery.toFixed(0)+'%"></i></div></div>'
+      +'<div class="maint-bar"><span>Sensor Pack</span><div class="bar"><i style="width:'+ms.sensors.toFixed(0)+'%"></i></div></div>'
+      +'<div class="maint-bar"><span>RF Link</span><div class="bar"><i style="width:'+ms.rf.toFixed(0)+'%"></i></div></div>'
+      +'<div class="maint-bar"><span>Nav Stack</span><div class="bar"><i style="width:'+ms.nav.toFixed(0)+'%"></i></div></div>'
+      +'<div class="maint-bar"><span>Airframe</span><div class="bar"><i style="width:'+ms.airframe.toFixed(0)+'%"></i></div></div>';
+  }
+}
+function renderSourcesView(scene){
+  var sources=(S[scene]&&S[scene].sources)?S[scene].sources.slice():[];
+  sources= sources.concat([
+    {name:'AirNow',detail:'PM2.5 + AQI overlay'},
+    {name:'PlanetScope',detail:'Optical imagery · 3m'},
+    {name:'Local Dispatch',detail:'Responder radio ingest'}
+  ]);
+  var grid=document.getElementById('source-grid');
+  if(grid){
+    grid.innerHTML=sources.map(function(s){
+      var latency=(Math.random()*1.6+0.4).toFixed(1)+'s';
+      return '<div class="source-card"><h4>'+s.name+'</h4>'
+        +'<div class="source-meta"><span>'+s.detail+'</span><span>Latency '+latency+'</span></div>'
+        +'<span class="source-status">Operational</span></div>';
+    }).join('');
+  }
+  var insights=document.getElementById('source-insights');
+  if(insights){
+    insights.innerHTML=''
+      +'<div class="insight"><h4>Coverage Health</h4><p>All core providers are green. Satellite revisits every 12 minutes with 98% uptime.</p></div>'
+      +'<div class="insight"><h4>Latency Budget</h4><p>Median ingest latency is 1.2 seconds across the active stack. Outliers are auto-throttled.</p></div>'
+      +'<div class="insight"><h4>Trust Posture</h4><p>Chain-of-custody signatures match. No data integrity drift detected in the last 24 hours.</p></div>';
+  }
+}
+function renderSettingsView(scene){
+  var region=document.getElementById('settings-region');
+  if(region){
+    var map={flood:'Central',quake:'Southwest',fire:'West'};
+    region.textContent=map[scene]||'Central';
+  }
+}
+function renderWorkViews(scene){
+  renderFleetView(scene);
+  renderTelemetryView(scene);
+  renderMaintenanceView(scene);
+  renderSourcesView(scene);
+  renderSettingsView(scene);
 }
 
 // RISK ENGINE
@@ -970,6 +1277,7 @@ function showSplash(scene){
 
 // LIVE TICK
 var tickIntervals=[];
+var viewTickCounter=0;
 function clearTicks(){tickIntervals.forEach(clearInterval);tickIntervals=[]}
 var lastMapScene='flood';
 function startTick(scene){
@@ -1004,6 +1312,9 @@ function startTick(scene){
     var hp=document.getElementById('h-pkt');if(hp)hp.textContent=pkr;
     mapFreshSec=Math.min(mapFreshSec+2.5,3599);
     updateMapFresh();
+    tickTelemetryFeed(scene);
+    viewTickCounter=(viewTickCounter+1)%6;
+    if(viewTickCounter%2===0) renderWorkViews(scene);
     if(curScene==='stream'){
       pushFeed(lastMapScene);
       renderCards(lastMapScene);
@@ -1232,6 +1543,8 @@ function loadScene(name){
   renderTickets(s.tickets);
   renderRisk(name);
   renderTimeline(name);
+  renderWorkViews(name);
+  seedTelemetryFeed(name);
   startTick(name);
 }
 
@@ -1239,11 +1552,56 @@ function loadScene(name){
 var layout=document.getElementById('layout');
 var sv=document.getElementById('sv');
 var dv=document.getElementById('dv');
+var navState='operations';
+var viewEls={
+  fleet:document.getElementById('view-fleet'),
+  telemetry:document.getElementById('view-telemetry'),
+  maintenance:document.getElementById('view-maintenance'),
+  sources:document.getElementById('view-sources'),
+  settings:document.getElementById('view-settings')
+};
+function setActiveScenarioTab(name){
+  document.querySelectorAll('.tab').forEach(function(b){
+    b.classList.toggle('on',b.dataset.s===name);
+  });
+}
+function setNavView(view,opts){
+  opts=opts||{};
+  navState=view;
+  document.querySelectorAll('.nav-item').forEach(function(item){
+    item.classList.toggle('on',item.dataset.view===view);
+  });
+  Object.keys(viewEls).forEach(function(k){
+    if(viewEls[k]) viewEls[k].classList.toggle('on',k===view);
+  });
+  if(view==='operations'){
+    if(!opts.preserveScene){
+      setActiveScenarioTab(lastMapScene);
+      loadScene(lastMapScene);
+    } else {
+      layout.style.display='grid';
+    }
+  } else {
+    layout.style.display='none';
+    sv.classList.remove('on');
+    if(dv) dv.classList.remove('on');
+    clearDroneTicks();
+    setActiveScenarioTab(lastMapScene);
+    renderWorkViews(lastMapScene);
+  }
+}
+document.querySelectorAll('.nav-item').forEach(function(item){
+  item.addEventListener('click',function(){
+    var view=item.dataset.view||'operations';
+    setNavView(view);
+  });
+});
 document.querySelectorAll('.tab').forEach(function(btn){
   btn.addEventListener('click',function(){
     document.querySelectorAll('.tab').forEach(function(b){b.classList.remove('on')});
     btn.classList.add('on');
     var sc=btn.dataset.s;
+    setNavView('operations',{preserveScene:true});
     if(sc==='stream'){
       clearDroneTicks();
       layout.style.display='none';
@@ -1283,3 +1641,5 @@ document.querySelectorAll('.tab').forEach(function(btn){
 // INIT
 initFeed('flood');
 loadScene('flood');
+bindTicketModal();
+setNavView('operations',{preserveScene:true});
