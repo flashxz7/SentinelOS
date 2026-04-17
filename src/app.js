@@ -633,6 +633,24 @@ function renderMaintenanceView(scene){
       +'<div class="maint-bar"><span>Nav Stack</span><div class="bar"><i style="width:'+ms.nav.toFixed(0)+'%"></i></div></div>'
       +'<div class="maint-bar"><span>Airframe</span><div class="bar"><i style="width:'+ms.airframe.toFixed(0)+'%"></i></div></div>';
   }
+  var orders=document.getElementById('maint-orders');
+  if(orders){
+    var list=LD[scene].drones.slice(0,3).map(function(d,idx){
+      var level=idx===0?'high':idx===1?'med':'low';
+      return '<div class="maint-order"><div><h4>'+d.id+' vibration audit</h4>'
+        +'<p>Rotor imbalance flagged · '+d.state+' · '+d.alt.toFixed(0)+' m AGL</p></div>'
+        +'<span class="maint-badge '+level+'">'+level+' priority</span></div>';
+    }).join('');
+    orders.innerHTML=list;
+  }
+  var forecast=document.getElementById('maint-forecast');
+  if(forecast){
+    forecast.innerHTML=''
+      +'<div class="forecast-row"><span>Motor failure (72h)</span><b>'+(6+Math.random()*4).toFixed(1)+'%</b></div>'
+      +'<div class="forecast-row"><span>Battery swap queue</span><b>'+Math.floor(8+Math.random()*5)+'</b></div>'
+      +'<div class="forecast-row"><span>Sensor drift risk</span><b>'+(3+Math.random()*3).toFixed(1)+'%</b></div>'
+      +'<div class="forecast-row"><span>Planned downtime</span><b>'+(2+Math.random()*2).toFixed(1)+' h</b></div>';
+  }
 }
 function renderSourcesView(scene){
   var sources=(S[scene]&&S[scene].sources)?S[scene].sources.slice():[];
@@ -656,6 +674,15 @@ function renderSourcesView(scene){
       +'<div class="insight"><h4>Coverage Health</h4><p>All core providers are green. Satellite revisits every 12 minutes with 98% uptime.</p></div>'
       +'<div class="insight"><h4>Latency Budget</h4><p>Median ingest latency is 1.2 seconds across the active stack. Outliers are auto-throttled.</p></div>'
       +'<div class="insight"><h4>Trust Posture</h4><p>Chain-of-custody signatures match. No data integrity drift detected in the last 24 hours.</p></div>';
+  }
+  var coverage=document.getElementById('source-coverage');
+  if(coverage){
+    coverage.innerHTML=''
+      +'<div class="coverage-row"><span>Satellite imagery</span><b>94% coverage</b></div>'
+      +'<div class="coverage-row"><span>Terrestrial sensors</span><b>88% coverage</b></div>'
+      +'<div class="coverage-row"><span>Emergency calls</span><b>76% coverage</b></div>'
+      +'<div class="coverage-row"><span>Responder radios</span><b>91% coverage</b></div>'
+      +'<div class="coverage-row"><span>Weather overlays</span><b>99% coverage</b></div>';
   }
 }
 function renderSettingsView(scene){
@@ -1580,11 +1607,15 @@ function setNavView(view,opts){
     el.style.display=on?'block':'none';
   });
   if(view==='operations'){
+    layout.style.display='grid';
+    sv.classList.remove('on');
+    if(dv) dv.classList.remove('on');
+    clearDroneTicks();
     if(!opts.preserveScene){
       setActiveScenarioTab(lastMapScene);
       loadScene(lastMapScene);
     } else {
-      layout.style.display='grid';
+      renderWorkViews(lastMapScene);
     }
   } else {
     layout.style.display='none';

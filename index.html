@@ -383,13 +383,25 @@
         </div>
       </div>
       <div class="view-grid maintenance-grid">
-        <div class="view-card maint-schedule">
-          <div class="card-title">Service Timeline</div>
-          <div class="maint-list" id="maint-list"></div>
+        <div class="view-col">
+          <div class="view-card maint-schedule">
+            <div class="card-title">Service Timeline</div>
+            <div class="maint-list" id="maint-list"></div>
+          </div>
+          <div class="view-card maint-orders">
+            <div class="card-title">Open Work Orders</div>
+            <div class="maint-orders-list" id="maint-orders"></div>
+          </div>
         </div>
-        <div class="view-card maint-health">
-          <div class="card-title">Component Health</div>
-          <div class="maint-bars" id="maint-bars"></div>
+        <div class="view-col">
+          <div class="view-card maint-health">
+            <div class="card-title">Component Health</div>
+            <div class="maint-bars" id="maint-bars"></div>
+          </div>
+          <div class="view-card maint-forecast">
+            <div class="card-title">Failure Forecast</div>
+            <div class="maint-forecast" id="maint-forecast"></div>
+          </div>
         </div>
       </div>
     </div>
@@ -417,7 +429,13 @@
           </div>
           <div class="source-grid" id="source-grid"></div>
         </div>
-        <div class="view-card source-insights" id="source-insights"></div>
+        <div class="view-col">
+          <div class="view-card source-insights" id="source-insights"></div>
+          <div class="view-card source-coverage">
+            <div class="card-title">Coverage Matrix</div>
+            <div class="coverage-grid" id="source-coverage"></div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -454,6 +472,27 @@
           <div class="settings-row"><span>Chain of Custody</span><span class="setting-value">Strict</span></div>
           <div class="settings-row"><span>External Sharing</span><span class="setting-value">Restricted</span></div>
           <div class="settings-row"><span>Audit Mode</span><span class="setting-value">Always on</span></div>
+        </div>
+        <div class="view-card settings-card">
+          <div class="card-title">Notification Routing</div>
+          <div class="settings-row"><span>Primary Channel</span><span class="setting-value">Secure Push</span></div>
+          <div class="settings-row"><span>Escalation</span><span class="setting-value">Ops Lead + EOC</span></div>
+          <div class="settings-row"><span>After Hours</span><span class="setting-value">On-call Rotation</span></div>
+          <div class="settings-row"><span>Failover</span><span class="setting-value">SMS + Voice</span></div>
+        </div>
+        <div class="view-card settings-card">
+          <div class="card-title">Integrations</div>
+          <div class="settings-row"><span>Dispatch CAD</span><span class="setting-value">Connected</span></div>
+          <div class="settings-row"><span>Weather Feeds</span><span class="setting-value">NOAA + ECMWF</span></div>
+          <div class="settings-row"><span>Evidence Vault</span><span class="setting-value">Linked</span></div>
+          <div class="settings-row"><span>GIS Stack</span><span class="setting-value">ArcGIS + OSM</span></div>
+        </div>
+        <div class="view-card settings-card">
+          <div class="card-title">Access Control</div>
+          <div class="settings-row"><span>Operator Seats</span><span class="setting-value">28 active</span></div>
+          <div class="settings-row"><span>Guest Access</span><span class="setting-value">Disabled</span></div>
+          <div class="settings-row"><span>2FA Enforcement</span><span class="setting-value">Required</span></div>
+          <div class="settings-row"><span>Audit Reviews</span><span class="setting-value">Weekly</span></div>
         </div>
       </div>
     </div>
