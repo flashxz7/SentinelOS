@@ -33,16 +33,9 @@
     <span class="logo-name">SentinelOS<span class="logo-ver">v2.4.1</span></span>
   </div>
   <div class="tabs">
-    <div class="tab-label">Scenes</div>
     <button class="tab on" data-s="flood"><span class="tdot flood"></span>Hill Country Flood</button>
     <button class="tab" data-s="quake"><span class="tdot quake"></span>Culberson County</button>
     <button class="tab" data-s="fire"><span class="tdot fire"></span>Eastland Complex</button>
-    <div class="tsep"></div>
-    <div class="tab-label">Diagnostics</div>
-    <button class="tab" data-s="stream"><span class="tdot stream"></span>Sensor Stream</button>
-    <div class="tsep"></div>
-    <div class="tab-label">Model</div>
-    <button class="tab" data-s="drone"><span class="tdot drone"></span>Drone Model</button>
   </div>
   <div class="topbar-r">
     <div class="topbar-group">
@@ -84,6 +77,11 @@
       <div class="nav-item" data-view="maintenance"><span></span>Maintenance</div>
       <div class="nav-item" data-view="sources"><span></span>Sources</div>
       <div class="nav-item" data-view="settings"><span></span>Settings</div>
+    </div>
+    <div class="nav tools">
+      <div class="nav-title">Tools</div>
+      <div class="tool-item" data-s="stream"><span></span>Sensor Stream</div>
+      <div class="tool-item" data-s="drone"><span></span>Drone Model</div>
     </div>
     <div class="sb-card">
       <div class="sb-title">System Status</div>
@@ -250,6 +248,7 @@
     </div>
     <div class="dv-stage">
       <div class="dv-canvas" id="dv-canvas">
+        <div class="dv-3d" id="dv-3d"></div>
         <div class="dv-rig" id="dv-rig">
           <svg class="dv-svg" viewBox="0 0 520 320" aria-hidden="true">
             <defs>
@@ -294,6 +293,12 @@
           <div class="dv-hot" data-part="rf" style="--x:59%;--y:51%"></div>
           <div class="dv-hot" data-part="gps" style="--x:57%;--y:37%"></div>
           <div class="dv-hot" data-part="sensor" style="--x:42%;--y:51%"></div>
+        </div>
+        <div class="dv-core-glow"></div>
+        <div class="dv-orbits">
+          <div class="dv-orbit o1"><span class="dv-node"></span></div>
+          <div class="dv-orbit o2"><span class="dv-node"></span></div>
+          <div class="dv-orbit o3"><span class="dv-node"></span></div>
         </div>
         <div class="dv-glass"></div>
         <div class="dv-tip" id="dv-tip"></div>
@@ -548,6 +553,8 @@
   <div class="tl-track"><div class="tl-inner" id="tl-inner"></div></div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/controls/OrbitControls.js"></script>
 <script src="src/app.js"></script>
 </body>
 </html>

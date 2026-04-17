@@ -1293,11 +1293,222 @@ var activeDronePart=null;
 var droneRoster=[];
 var droneIndex=0;
 var droneSwitcherBound=false;
+var threeState=null;
 
 function seedFromId(id){
   var sum=0;
   for(var i=0;i<id.length;i++) sum=(sum*31+id.charCodeAt(i))%10000;
   return sum;
+}
+function initDrone3d(){
+  if(threeState && threeState.renderer) return;
+  var container=document.getElementById('dv-3d');
+  var dv=document.getElementById('dv');
+  if(!container||!dv||!window.THREE) return;
+  dv.classList.add('dv-3d-on');
+  container.innerHTML='';
+  var renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});
+  renderer.setPixelRatio(window.devicePixelRatio||1);
+  renderer.setSize(container.clientWidth,container.clientHeight);
+  if(renderer.outputColorSpace) renderer.outputColorSpace=THREE.SRGBColorSpace;
+  container.appendChild(renderer.domElement);
+
+  var scene=new THREE.Scene();
+  scene.background=new THREE.Color(0x0b0c12);
+
+  var camera=new THREE.PerspectiveCamera(45,container.clientWidth/container.clientHeight,0.1,100);
+  camera.position.set(7,5.2,8.5);
+
+  var controls=new THREE.OrbitControls(camera,renderer.domElement);
+  controls.enableDamping=true;
+  controls.dampingFactor=0.08;
+  controls.minDistance=4.5;
+  controls.maxDistance=16;
+  controls.minPolarAngle=0.2;
+  controls.maxPolarAngle=Math.PI-0.2;
+  controls.target.set(0,0.6,0);
+  controls.update();
+
+  var ambient=new THREE.AmbientLight(0xffffff,0.55);
+  scene.add(ambient);
+  var dir=new THREE.DirectionalLight(0xffffff,1.05);
+  dir.position.set(6,8,6);
+  scene.add(dir);
+  var rim=new THREE.DirectionalLight(0x7c3aed,0.35);
+  rim.position.set(-6,4,-4);
+  scene.add(rim);
+
+  var grid=new THREE.GridHelper(30,30,0x2b2d3c,0x151623);
+  grid.position.y=-1.2;
+  grid.material.opacity=0.6;
+  grid.material.transparent=true;
+  scene.add(grid);
+
+  var deckMat=new THREE.MeshStandardMaterial({color:0x1a1f2a,transparent:true,opacity:0.35,metalness:0.1,roughness:0.7});
+  var deck=new THREE.Mesh(new THREE.CircleGeometry(6,64),deckMat);
+  deck.rotation.x=-Math.PI/2;
+  deck.position.y=-1.18;
+  scene.add(deck);
+
+  var build=buildDroneMesh();
+  var droneGroup=build.group;
+  scene.add(droneGroup);
+
+  var hotspots=buildHotspots(droneGroup);
+
+  threeState={
+    renderer:renderer,
+    scene:scene,
+    camera:camera,
+    controls:controls,
+    group:droneGroup,
+    props:build.props,
+    orbiters:build.orbiters,
+    materials:build.materials,
+    container:container,
+    hotspots:hotspots,
+    animId:0
+  };
+
+  function onResize(){
+    if(!threeState) return;
+    var w=container.clientWidth,h=container.clientHeight;
+    if(!w||!h) return;
+    camera.aspect=w/h;camera.updateProjectionMatrix();
+    renderer.setSize(w,h);
+  }
+  window.addEventListener('resize',onResize);
+
+  function animate(){
+    if(!threeState) return;
+    threeState.animId=requestAnimationFrame(animate);
+    threeState.props.forEach(function(p){p.rotation.y+=0.18;});
+    threeState.orbiters.forEach(function(o){
+      o.t+=o.speed;
+      var x=Math.cos(o.t)*o.radius;
+      var z=Math.sin(o.t)*o.radius;
+      var y=o.height+Math.sin(o.t*1.3)*0.18;
+      o.mesh.position.set(x,y,z);
+      o.ring.position.set(x,y,z);
+      o.ring.rotation.y+=0.02;
+    });
+    updateHotspotPositions();
+    controls.update();
+    renderer.render(scene,camera);
+  }
+  animate();
+}
+function buildDroneMesh(){
+  var group=new THREE.Group();
+  group.position.y=0.4;
+
+  var bodyMat=new THREE.MeshStandardMaterial({color:0x0c0c12,metalness:0.55,roughness:0.35});
+  var plateMat=new THREE.MeshStandardMaterial({color:0x10141d,metalness:0.45,roughness:0.5});
+  var accentMat=new THREE.MeshStandardMaterial({color:0x7c3aed,emissive:0x2b0f4b,emissiveIntensity:0.7,metalness:0.4,roughness:0.25});
+  var accentMat2=new THREE.MeshStandardMaterial({color:0x22d3ee,emissive:0x0b2b33,emissiveIntensity:0.6,metalness:0.4,roughness:0.25});
+
+  var body=new THREE.Mesh(new THREE.BoxGeometry(3.6,0.6,2.4),bodyMat);
+  body.position.y=0.2;
+  group.add(body);
+
+  var deck=new THREE.Mesh(new THREE.BoxGeometry(1.9,0.2,1.1),accentMat2);
+  deck.position.set(0,0.55,0);
+  group.add(deck);
+
+  var core=new THREE.Mesh(new THREE.BoxGeometry(2.0,0.2,0.3),accentMat);
+  core.position.set(0,-0.05,1.0);
+  group.add(core);
+
+  var armMat=new THREE.MeshStandardMaterial({color:0x0b0c12,metalness:0.5,roughness:0.4});
+  var armGeo=new THREE.BoxGeometry(2.6,0.14,0.24);
+  var armFront=new THREE.Mesh(armGeo,armMat);armFront.position.set(0,0.05,1.05);group.add(armFront);
+  var armBack=new THREE.Mesh(armGeo,armMat);armBack.position.set(0,0.05,-1.05);group.add(armBack);
+  var armLeft=new THREE.Mesh(new THREE.BoxGeometry(2.1,0.14,0.24),armMat);armLeft.rotation.y=Math.PI/2;armLeft.position.set(-1.45,0.05,0);group.add(armLeft);
+  var armRight=new THREE.Mesh(new THREE.BoxGeometry(2.1,0.14,0.24),armMat);armRight.rotation.y=Math.PI/2;armRight.position.set(1.45,0.05,0);group.add(armRight);
+
+  var propMat=new THREE.MeshStandardMaterial({color:0x11131a,metalness:0.35,roughness:0.5});
+  var propGeo=new THREE.CylinderGeometry(0.55,0.55,0.06,32);
+  var props=[];
+  [[-2.2,0.28,1.6],[2.2,0.28,1.6],[-2.2,0.28,-1.6],[2.2,0.28,-1.6]].forEach(function(p){
+    var prop=new THREE.Mesh(propGeo,propMat);
+    prop.rotation.x=Math.PI/2;
+    prop.position.set(p[0],p[1],p[2]);
+    group.add(prop);
+    props.push(prop);
+  });
+
+  var orbMats=[
+    new THREE.MeshStandardMaterial({color:0xa7f3d0,metalness:0.25,roughness:0.25,emissive:0x04281f,emissiveIntensity:0.3}),
+    new THREE.MeshStandardMaterial({color:0xfef3c7,metalness:0.25,roughness:0.25,emissive:0x3a2a05,emissiveIntensity:0.25}),
+    new THREE.MeshStandardMaterial({color:0xfca5a5,metalness:0.25,roughness:0.25,emissive:0x3b1111,emissiveIntensity:0.28})
+  ];
+  var ringMats=[
+    new THREE.MeshStandardMaterial({color:0xa7f3d0,transparent:true,opacity:0.35,metalness:0.1,roughness:0.4}),
+    new THREE.MeshStandardMaterial({color:0xfef3c7,transparent:true,opacity:0.35,metalness:0.1,roughness:0.4}),
+    new THREE.MeshStandardMaterial({color:0xfca5a5,transparent:true,opacity:0.35,metalness:0.1,roughness:0.4})
+  ];
+  var orbiters=[];
+  var sphereGeo=new THREE.SphereGeometry(0.32,24,24);
+  var ringGeo=new THREE.TorusGeometry(0.5,0.05,12,40);
+  [
+    {r:1.8,s:0.008,h:0.6,mat:0,phase:0.2},
+    {r:1.5,s:-0.01,h:0.45,mat:1,phase:2.1},
+    {r:1.3,s:0.012,h:0.35,mat:2,phase:1.2},
+    {r:2.0,s:-0.007,h:0.25,mat:0,phase:3.2},
+    {r:1.7,s:0.009,h:0.15,mat:1,phase:4.0}
+  ].forEach(function(o){
+    var sphere=new THREE.Mesh(sphereGeo,orbMats[o.mat]);
+    var ring=new THREE.Mesh(ringGeo,ringMats[o.mat]);
+    ring.rotation.x=Math.PI/2;
+    group.add(sphere);group.add(ring);
+    orbiters.push({mesh:sphere,ring:ring,radius:o.r,speed:o.s,height:o.h,t:o.phase});
+  });
+
+  return {
+    group:group,
+    props:props,
+    orbiters:orbiters,
+    materials:{accent:accentMat,accent2:accentMat2,nodeMats:orbMats,ringMats:ringMats}
+  };
+}
+function buildHotspots(group){
+  var hotspotMap={
+    'core':new THREE.Vector3(0,0.35,0.1),
+    'battery':new THREE.Vector3(0,0.2,-0.2),
+    'camera':new THREE.Vector3(0,0.05,1.35),
+    'lidar':new THREE.Vector3(0,0.62,0),
+    'prop-fl':new THREE.Vector3(-2.2,0.28,1.6),
+    'prop-fr':new THREE.Vector3(2.2,0.28,1.6),
+    'prop-rl':new THREE.Vector3(-2.2,0.28,-1.6),
+    'prop-rr':new THREE.Vector3(2.2,0.28,-1.6),
+    'rf':new THREE.Vector3(0.8,0.18,0.2),
+    'gps':new THREE.Vector3(0.8,0.62,-0.1),
+    'sensor':new THREE.Vector3(-0.8,0.18,0.2)
+  };
+  var out={};
+  document.querySelectorAll('.dv-hot').forEach(function(el){
+    var key=el.dataset.part;
+    if(hotspotMap[key]) out[key]={el:el,pos:hotspotMap[key].clone()};
+  });
+  return out;
+}
+function updateHotspotPositions(){
+  if(!threeState||!threeState.hotspots) return;
+  var container=threeState.container;
+  var rect=container.getBoundingClientRect();
+  var width=rect.width,height=rect.height;
+  if(!width||!height) return;
+  Object.keys(threeState.hotspots).forEach(function(k){
+    var h=threeState.hotspots[k];
+    var p=h.pos.clone().applyMatrix4(threeState.group.matrixWorld).project(threeState.camera);
+    var visible=p.z>-1&&p.z<1;
+    var x=(p.x*0.5+0.5)*width;
+    var y=(-p.y*0.5+0.5)*height;
+    h.el.style.left=x+'px';
+    h.el.style.top=y+'px';
+    h.el.style.opacity=visible?1:0;
+    h.el.style.pointerEvents=visible?'auto':'none';
+  });
 }
 function setDroneModelFromLive(d){
   if(!d) return;
@@ -1322,6 +1533,53 @@ function setDroneModelFromLive(d){
   DRONE_STATE.health=clamp(96-(100-d.batt)*0.35-Math.abs(d.rssi+60)*0.45,60,98);
   var active=document.getElementById('dv-active');
   if(active) active.textContent=d.id+' · '+d.state;
+  applyDroneTheme(seed,d);
+}
+function applyDroneTheme(seed,d){
+  var dv=document.getElementById('dv');
+  if(!dv) return;
+  var palettes=[
+    {accent:'#7c3aed',accent2:'#22d3ee',nodes:['#a7f3d0','#fef3c7','#fca5a5'],orbits:[240,186,144],speeds:[16,12,10],tilts:[12,-18,22]},
+    {accent:'#22c55e',accent2:'#3b82f6',nodes:['#bfdbfe','#fca5a5','#fde68a'],orbits:[220,170,136],speeds:[18,13,11],tilts:[-10,16,-24]},
+    {accent:'#f97316',accent2:'#a855f7',nodes:['#c7d2fe','#fcd34d','#fecaca'],orbits:[250,190,150],speeds:[15,11,9],tilts:[14,-20,26]},
+    {accent:'#0ea5e9',accent2:'#14b8a6',nodes:['#a5f3fc','#f9a8d4','#bbf7d0'],orbits:[230,176,132],speeds:[17,12,10],tilts:[-14,18,-20]}
+  ];
+  var p=palettes[seed%palettes.length];
+  var spd=d&&d.spd?clamp(d.spd/10,0.7,1.4):1;
+  var s1=(p.speeds[0]/spd).toFixed(1);
+  var s2=(p.speeds[1]/spd).toFixed(1);
+  var s3=(p.speeds[2]/spd).toFixed(1);
+  dv.style.setProperty('--dv-accent',p.accent);
+  dv.style.setProperty('--dv-accent-2',p.accent2);
+  dv.style.setProperty('--dv-node-1',p.nodes[0]);
+  dv.style.setProperty('--dv-node-2',p.nodes[1]);
+  dv.style.setProperty('--dv-node-3',p.nodes[2]);
+  dv.style.setProperty('--dv-orbit-1',p.orbits[0]+'px');
+  dv.style.setProperty('--dv-orbit-2',p.orbits[1]+'px');
+  dv.style.setProperty('--dv-orbit-3',p.orbits[2]+'px');
+  dv.style.setProperty('--dv-orbit-1-speed',s1+'s');
+  dv.style.setProperty('--dv-orbit-2-speed',s2+'s');
+  dv.style.setProperty('--dv-orbit-3-speed',s3+'s');
+  dv.style.setProperty('--dv-orbit-1-tilt',p.tilts[0]+'deg');
+  dv.style.setProperty('--dv-orbit-2-tilt',p.tilts[1]+'deg');
+  dv.style.setProperty('--dv-orbit-3-tilt',p.tilts[2]+'deg');
+  updateDrone3dTheme(p);
+}
+function updateDrone3dTheme(p){
+  if(!threeState||!threeState.materials) return;
+  var m=threeState.materials;
+  if(m.accent){m.accent.color.set(p.accent);m.accent.emissive.set(p.accent);}
+  if(m.accent2){m.accent2.color.set(p.accent2);m.accent2.emissive.set(p.accent2);}
+  if(m.nodeMats){
+    if(m.nodeMats[0]) m.nodeMats[0].color.set(p.nodes[0]);
+    if(m.nodeMats[1]) m.nodeMats[1].color.set(p.nodes[1]);
+    if(m.nodeMats[2]) m.nodeMats[2].color.set(p.nodes[2]);
+  }
+  if(m.ringMats){
+    if(m.ringMats[0]) m.ringMats[0].color.set(p.nodes[0]);
+    if(m.ringMats[1]) m.ringMats[1].color.set(p.nodes[1]);
+    if(m.ringMats[2]) m.ringMats[2].color.set(p.nodes[2]);
+  }
 }
 function selectDroneByIndex(idx){
   if(!droneRoster.length) return;
@@ -1939,6 +2197,11 @@ var viewEls={
   sources:document.getElementById('view-sources'),
   settings:document.getElementById('view-settings')
 };
+function setToolActive(sc){
+  document.querySelectorAll('.tool-item').forEach(function(item){
+    item.classList.toggle('on',item.dataset.s===sc);
+  });
+}
 function setActiveScenarioTab(name){
   document.querySelectorAll('.tab').forEach(function(b){
     b.classList.toggle('on',b.dataset.s===name);
@@ -1963,6 +2226,7 @@ function setNavView(view,opts){
     sv.classList.remove('on');
     if(dv) dv.classList.remove('on');
     clearDroneTicks();
+    setToolActive(null);
     if(!opts.preserveScene){
       setActiveScenarioTab(lastMapScene);
       loadScene(lastMapScene);
@@ -1986,45 +2250,59 @@ document.querySelectorAll('.nav-item').forEach(function(item){
     setNavView(view);
   });
 });
+function switchScenario(sc){
+  setNavView('operations',{preserveScene:true});
+  if(sc==='stream'){
+    setActiveScenarioTab(lastMapScene);
+    setToolActive('stream');
+    clearDroneTicks();
+    layout.style.display='none';
+    sv.classList.add('on');
+    if(dv) dv.classList.remove('on');
+    curScene='stream';
+    initFeed(lastMapScene);
+    renderCards(lastMapScene);
+    renderSVHeader(lastMapScene);
+    setPP(lastMapScene);
+    renderTimeline(lastMapScene);
+    var rf=document.getElementById('rf-body');
+    if(rf) rf.innerHTML=feedLines.slice().reverse().join('');
+    return;
+  }
+  if(sc==='drone'){
+    setActiveScenarioTab(lastMapScene);
+    setToolActive('drone');
+    layout.style.display='none';
+    sv.classList.remove('on');
+    if(dv) dv.classList.add('on');
+    curScene='drone';
+    initDrone3d();
+    refreshDroneRoster(lastMapScene);
+    bindDroneSwitcher();
+    bindDroneHotspots();
+    bindDroneTilt();
+    bindDroneModes();
+    setDroneMode('inspect');
+    startDroneAutoRotate();
+    startDroneTick();
+    return;
+  }
+  setToolActive(null);
+  setActiveScenarioTab(sc);
+  clearDroneTicks();
+  sv.classList.remove('on');
+  if(dv) dv.classList.remove('on');
+  layout.style.display='grid';
+  loadScene(sc);
+}
 document.querySelectorAll('.tab').forEach(function(btn){
   btn.addEventListener('click',function(){
-    document.querySelectorAll('.tab').forEach(function(b){b.classList.remove('on')});
-    btn.classList.add('on');
-    var sc=btn.dataset.s;
-    setNavView('operations',{preserveScene:true});
-    if(sc==='stream'){
-      clearDroneTicks();
-      layout.style.display='none';
-      sv.classList.add('on');
-      if(dv) dv.classList.remove('on');
-      curScene='stream';
-      initFeed(lastMapScene);
-      renderCards(lastMapScene);
-      renderSVHeader(lastMapScene);
-      setPP(lastMapScene);
-      renderTimeline(lastMapScene);
-      var rf=document.getElementById('rf-body');
-      if(rf) rf.innerHTML=feedLines.slice().reverse().join('');
-    } else if(sc==='drone'){
-      layout.style.display='none';
-      sv.classList.remove('on');
-      if(dv) dv.classList.add('on');
-      curScene='drone';
-      refreshDroneRoster(lastMapScene);
-      bindDroneSwitcher();
-      bindDroneHotspots();
-      bindDroneTilt();
-      bindDroneModes();
-      setDroneMode('inspect');
-      startDroneAutoRotate();
-      startDroneTick();
-    } else {
-      clearDroneTicks();
-      sv.classList.remove('on');
-      if(dv) dv.classList.remove('on');
-      layout.style.display='grid';
-      loadScene(sc);
-    }
+    switchScenario(btn.dataset.s);
+  });
+});
+document.querySelectorAll('.tool-item').forEach(function(item){
+  item.addEventListener('click',function(){
+    switchScenario(item.dataset.s);
   });
 });
 
