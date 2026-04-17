@@ -1,7 +1,7 @@
 SentinelOS
 ==========
 
-SentinelOS is an incident operations console for coordinating aerial response, ground teams, and risk analytics in fast-moving events. The web client presents a live map, mission ticketing, and a telemetry pipeline in a single workspace.
+SentinelOS is an incident operations console for coordinating aerial response, ground teams, and risk analytics in fast-moving events. The software presents a live map, mission ticketing, and a telemetry pipeline in a single workspace.
 
 Key Capabilities
 ----------------
