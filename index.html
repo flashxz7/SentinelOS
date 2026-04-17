@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SentinelOS</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="src/styles.css">
+</head>
+<body>
+
+<!-- SPLASH -->
+<div class="splash" id="splash">
+  <div class="sp-ico" id="sp-ico"></div>
+  <div><div class="sp-title" id="sp-t">Loading...</div><div class="sp-sub" id="sp-s"></div></div>
+</div>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="topbar-l">
+    <div class="logo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="12" y1="12" x2="5.5" y2="5.5"/><line x1="12" y1="12" x2="18.5" y2="5.5"/>
+        <line x1="12" y1="12" x2="5.5" y2="18.5"/><line x1="12" y1="12" x2="18.5" y2="18.5"/>
+        <circle cx="5.5" cy="5.5" r="2.2"/><circle cx="18.5" cy="5.5" r="2.2"/>
+        <circle cx="5.5" cy="18.5" r="2.2"/><circle cx="18.5" cy="18.5" r="2.2"/>
+        <circle cx="12" cy="12" r="1.8" fill="white" opacity=".55"/>
+      </svg>
+    </div>
+    <span class="logo-name">SentinelOS<span class="logo-ver">v2.4.1</span></span>
+  </div>
+  <div class="tabs">
+    <button class="tab on" data-s="flood"><span class="tdot flood"></span>Hill Country Flood</button>
+    <button class="tab" data-s="quake"><span class="tdot quake"></span>Culberson County</button>
+    <button class="tab" data-s="fire"><span class="tdot fire"></span>Eastland Complex</button>
+    <div class="tsep"></div>
+    <button class="tab" data-s="stream"><span class="tdot stream"></span>Sensor Stream</button>
+    <div class="tsep"></div>
+    <button class="tab" data-s="drone"><span class="tdot drone"></span>Drone Model</button>
+  </div>
+  <div class="topbar-r">
+    <div class="sys-h">
+      <div class="hi"><div class="hl">Inference</div><div class="hv" id="h-inf">143ms</div></div>
+      <div class="hsep"></div>
+      <div class="hi"><div class="hl">GPS Lock</div><div class="hv" id="h-gps">4/4</div></div>
+      <div class="hsep"></div>
+      <div class="hi"><div class="hl">Uptime</div><div class="hv" id="h-up">06:14:32</div></div>
+      <div class="hsep"></div>
+      <div class="hi"><div class="hl">Pkt/s</div><div class="hv" id="h-pkt">12.4</div></div>
+    </div>
+    <div class="live"><span class="ldot"></span>LIVE</div>
+    <div class="clock" id="clock"></div>
+  </div>
+</div>
+
+<div class="app-shell">
+  <aside class="sidebar">
+    <div class="sb-brand">
+      <div class="sb-title">Workspace</div>
+      <div class="sb-name">Sentinel Operations</div>
+      <div class="sb-sub">Replay Mode · Public datasets</div>
+    </div>
+    <div class="nav">
+      <div class="nav-title">Navigation</div>
+      <div class="nav-item on"><span></span>Operations</div>
+      <div class="nav-item"><span></span>Fleet</div>
+      <div class="nav-item"><span></span>Telemetry</div>
+      <div class="nav-item"><span></span>Maintenance</div>
+      <div class="nav-item"><span></span>Sources</div>
+      <div class="nav-item"><span></span>Settings</div>
+    </div>
+    <div class="sb-card">
+      <div class="sb-title">System Status</div>
+      <div class="sb-pill">All Systems Nominal</div>
+      <div class="sb-kv"><span>Replay window</span><b>45 min</b></div>
+      <div class="sb-kv"><span>Telemetry</span><b>Live</b></div>
+      <div class="sb-kv"><span>Confidence</span><b>92%</b></div>
+    </div>
+    <div class="sb-card">
+      <div class="sb-title">Quick Actions</div>
+      <div class="sb-kv"><span>Generate Report</span><b>PDF</b></div>
+      <div class="sb-kv"><span>Share to EOC</span><b>Secure</b></div>
+      <div class="sb-kv"><span>Export Logs</span><b>CSV</b></div>
+    </div>
+    <div class="sb-footer">
+      <div class="sb-avatar"></div>
+      <div class="sb-user"><b>Ops Analyst</b><span>v2.4.1 · CST</span></div>
+    </div>
+  </aside>
+  <div class="main-area">
+    <!-- MAIN LAYOUT -->
+    <div class="layout" id="layout">
+      <div class="pnl pl">
+        <div><div class="stit">Overview</div><div class="stat-row" id="stats"></div></div>
+        <div><div class="stit">Drone Fleet</div><div class="fleet" id="fleet"></div></div>
+        <div><div class="stit">Detections</div><div class="al-list" id="alerts"></div></div>
+      </div>
+      <div class="mapwrap">
+        <div id="map"></div>
+        <div class="map-scan" aria-hidden="true"></div>
+        <div class="map-atmo" aria-hidden="true"></div>
+        <div class="map-vignette" aria-hidden="true"></div>
+        <div class="hud" id="hud"></div>
+        <div class="map-replay" id="map-replay">Replay · Public datasets</div>
+        <div class="map-fresh" id="map-fresh">Data freshness: 00:00</div>
+        <div class="map-gis">
+          <div class="map-scale"><div class="map-scale-bar"><span></span><span></span></div><span>200 m</span></div>
+          <div class="map-north">N</div>
+        </div>
+        <div class="legend">
+          <div class="leg-t">Risk Level</div>
+          <div class="leg-r"><div class="leg-s" style="background:var(--red)"></div>Critical</div>
+          <div class="leg-r"><div class="leg-s" style="background:var(--ora)"></div>High</div>
+          <div class="leg-r"><div class="leg-s" style="background:var(--yel)"></div>Moderate</div>
+          <div class="leg-r"><div class="leg-s" style="background:var(--grn)"></div>Low</div>
+        </div>
+        <div class="tile-bn" id="tile-bn">
+          <div class="tile-bn-t">Loading satellite imagery...</div>
+          <div class="tile-bn-s">If tiles don't load, download and open locally in Chrome.</div>
+        </div>
+      </div>
+      <div class="pnl pr">
+        <div><div class="stit" id="wx-t">Hyperlocal Weather</div><div class="wx-grid" id="wx"></div></div>
+        <div>
+          <div class="stit">AI Risk Engine</div>
+          <div class="re">
+            <div class="re-top">
+              <div class="re-score-wrap"><span class="re-score" id="re-sc">87</span><span class="re-max">/100</span></div>
+              <span class="re-lv" id="re-lv">HIGH</span>
+            </div>
+            <div class="re-bar-bg"><div class="re-bar" id="re-bar"></div></div>
+            <div class="re-feats" id="re-feats"></div>
+          </div>
+        </div>
+        <div><div class="stit">Sentinel vs Public API</div><div class="cmp" id="cmp"></div></div>
+        <div><div class="stit">Data Sources</div><div class="sources" id="sources"></div></div>
+        <div><div class="stit">Mission Tickets</div><div class="tklist" id="tickets"></div></div>
+      </div>
+    </div>
+
+    <!-- SENSOR STREAM -->
+    <div class="sv" id="sv">
+  <div class="sv-hdr">
+    <div class="sv-hl">
+      <span class="sv-tit">Live Telemetry</span>
+      <span class="sv-cnt" id="sv-cnt">5 Drones Reporting</span>
+      <span class="sv-sc" id="sv-sc">Hill Country Flood Response</span>
+    </div>
+    <div class="sv-sync"><span class="sv-sdot"></span><span id="sv-ts">Syncing...</span></div>
+  </div>
+  <div class="sv-body">
+    <div class="rf">
+      <div class="rf-hdr">
+        <span class="rf-t">BME688 Raw Output</span>
+        <span class="rf-hz" id="rf-hz">2.4 Hz</span>
+      </div>
+      <div class="rf-body" id="rf-body"></div>
+    </div>
+    <div class="dc-area" id="dc-area"></div>
+    <div class="pipe">
+      <div class="pp-t">AI Risk Engine v2.1</div>
+      <div class="ps">
+        <div class="ps-l"><div class="ps-n">1</div>Input Layer — BME688</div>
+        <div class="ps-kv"><span class="ps-k">Temp (°C / °F)</span><span class="ps-v" id="pp-t">29.01°C / 84.2°F</span></div>
+        <div class="ps-kv"><span class="ps-k">Humidity</span><span class="ps-v" id="pp-h">97.14%</span></div>
+        <div class="ps-kv"><span class="ps-k">Pressure</span><span class="ps-v" id="pp-p">996.41 hPa</span></div>
+        <div class="ps-kv"><span class="ps-k">Gas Resistance</span><span class="ps-v" id="pp-g">48.3 kΩ</span></div>
+        <div class="ps-kv"><span class="ps-k">IAQ Index</span><span class="ps-v" id="pp-iaq">35</span></div>
+        <div class="ps-kv"><span class="ps-k">Altitude AGL</span><span class="ps-v" id="pp-a">62 m</span></div>
+      </div>
+      <div class="pa"><div class="pa-l"><div class="pa-d"></div></div><div class="pa-h">▼</div></div>
+      <div class="ps">
+        <div class="ps-l"><div class="ps-n">2</div>Feature Extraction</div>
+        <div class="ps-kv"><span class="ps-k">ΔP/hr velocity</span><span class="ps-v" id="pp-dp">−0.18 inHg</span></div>
+        <div class="ps-kv"><span class="ps-k">ΔH/hr delta</span><span class="ps-v" id="pp-dh">+4.3%</span></div>
+        <div class="ps-kv"><span class="ps-k">Gas resist. vel.</span><span class="ps-v" id="pp-dgr">−2.1 kΩ/hr</span></div>
+        <div class="ps-kv"><span class="ps-k">Thermal spread</span><span class="ps-v" id="pp-th">0.62°</span></div>
+        <div class="ps-kv"><span class="ps-k">Wind shear est.</span><span class="ps-v" id="pp-ws">Moderate</span></div>
+      </div>
+      <div class="pa"><div class="pa-l"><div class="pa-d" style="animation-delay:.5s"></div></div><div class="pa-h">▼</div></div>
+      <div class="pm">
+        <div class="pm-r"><span class="pm-k">Model</span><span class="pm-v">Random Forest + NOAA</span></div>
+        <div class="pm-r"><span class="pm-k">Active features</span><span class="pm-v">18</span></div>
+        <div class="pm-r"><span class="pm-k">Last inference</span><span class="pm-v" id="pp-inf">143ms</span></div>
+        <div class="pm-r"><span class="pm-k">NOAA overlay</span><span class="pm-v">Active</span></div>
+      </div>
+      <div class="pa"><div class="pa-l"><div class="pa-d" style="animation-delay:1s"></div></div><div class="pa-h">▼</div></div>
+      <div class="psc">
+        <div class="psc-l">Risk Score Output</div>
+        <div class="psc-n" id="pp-sc">87</div>
+        <div class="psc-bb"><div class="psc-bf" id="pp-bf"></div></div>
+        <div class="psc-lv" id="pp-lv">HIGH RISK</div>
+        <div class="psc-sub" id="pp-sub">Flood imminent · 3 critical detections</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+  <!-- DRONE MODEL -->
+  <div class="dv" id="dv">
+  <div class="dv-hdr">
+    <div class="dv-title">
+      <div class="dv-name">Sentinel Drone Model</div>
+      <div class="dv-sub" id="dv-sub">SNT-AX9 | Live diagnostics feed</div>
+    </div>
+    <div class="dv-modes" id="dv-modes">
+      <button class="dv-mode on" data-mode="inspect">Inspect</button>
+      <button class="dv-mode" data-mode="pin">Pin</button>
+      <button class="dv-mode" data-mode="fault">Fault</button>
+    </div>
+    <div class="dv-badges">
+      <span class="dv-badge ok" id="dv-link">LINK 98%</span>
+      <span class="dv-badge ok" id="dv-health">HEALTH 96%</span>
+      <span class="dv-badge" id="dv-faults">FAULTS 0</span>
+    </div>
+  </div>
+  <div class="dv-body">
+    <div class="dv-panel">
+      <div class="stit">System Health</div>
+      <div id="dv-parts"></div>
+      <div class="stit" style="margin-top:6px">Maintenance</div>
+      <div id="dv-maint"></div>
+    </div>
+    <div class="dv-stage">
+      <div class="dv-canvas" id="dv-canvas">
+        <div class="dv-rig" id="dv-rig">
+          <svg class="dv-svg" viewBox="0 0 520 320" aria-hidden="true">
+            <defs>
+              <linearGradient id="coreGrad" x1="0" x2="1">
+                <stop offset="0" stop-color="#262234"/>
+                <stop offset="1" stop-color="#14111b"/>
+              </linearGradient>
+              <linearGradient id="armGrad" x1="0" x2="1">
+                <stop offset="0" stop-color="#363247"/>
+                <stop offset="1" stop-color="#1b1824"/>
+              </linearGradient>
+              <radialGradient id="haloGrad" cx="50%" cy="50%" r="50%">
+                <stop offset="0" stop-color="#7c3aed" stop-opacity="0.28"/>
+                <stop offset="1" stop-color="#0b0a10" stop-opacity="0"/>
+              </radialGradient>
+            </defs>
+            <ellipse cx="260" cy="160" rx="210" ry="120" fill="url(#haloGrad)"/>
+            <rect class="dv-part core" data-part="core" x="200" y="110" width="120" height="100" rx="24" fill="url(#coreGrad)"/>
+            <rect class="dv-part" data-part="battery" x="226" y="140" width="68" height="50" rx="10" fill="#171421"/>
+            <rect class="dv-part" data-part="camera" x="238" y="196" width="44" height="20" rx="9" fill="#0d0b12"/>
+            <circle class="dv-part" data-part="lidar" cx="260" cy="118" r="12" fill="#0f0c14"/>
+            <line class="dv-part arm" data-part="arm-fl" x1="230" y1="145" x2="120" y2="54" stroke="url(#armGrad)"/>
+            <line class="dv-part arm" data-part="arm-fr" x1="290" y1="145" x2="400" y2="54" stroke="url(#armGrad)"/>
+            <line class="dv-part arm" data-part="arm-rl" x1="230" y1="195" x2="120" y2="266" stroke="url(#armGrad)"/>
+            <line class="dv-part arm" data-part="arm-rr" x1="290" y1="195" x2="400" y2="266" stroke="url(#armGrad)"/>
+            <circle class="dv-part prop" data-part="prop-fl" cx="110" cy="48" r="28"/>
+            <circle class="dv-part prop" data-part="prop-fr" cx="410" cy="48" r="28"/>
+            <circle class="dv-part prop" data-part="prop-rl" cx="110" cy="272" r="28"/>
+            <circle class="dv-part prop" data-part="prop-rr" cx="410" cy="272" r="28"/>
+            <circle class="dv-part" data-part="gps" cx="308" cy="120" r="8" fill="#111019"/>
+            <rect class="dv-part" data-part="rf" x="310" y="150" width="28" height="10" rx="5" fill="#101018"/>
+            <rect class="dv-part" data-part="sensor" x="184" y="150" width="22" height="10" rx="5" fill="#111019"/>
+          </svg>
+          <div class="dv-hot" data-part="prop-fl" style="--x:21%;--y:16%"></div>
+          <div class="dv-hot" data-part="prop-fr" style="--x:79%;--y:16%"></div>
+          <div class="dv-hot" data-part="prop-rl" style="--x:21%;--y:84%"></div>
+          <div class="dv-hot" data-part="prop-rr" style="--x:79%;--y:84%"></div>
+          <div class="dv-hot" data-part="core" style="--x:50%;--y:48%"></div>
+          <div class="dv-hot" data-part="camera" style="--x:50%;--y:66%"></div>
+          <div class="dv-hot" data-part="lidar" style="--x:50%;--y:36%"></div>
+          <div class="dv-hot" data-part="battery" style="--x:50%;--y:54%"></div>
+          <div class="dv-hot" data-part="rf" style="--x:59%;--y:51%"></div>
+          <div class="dv-hot" data-part="gps" style="--x:57%;--y:37%"></div>
+          <div class="dv-hot" data-part="sensor" style="--x:42%;--y:51%"></div>
+        </div>
+        <div class="dv-glass"></div>
+        <div class="dv-tip" id="dv-tip"></div>
+      </div>
+    </div>
+    <div class="dv-panel">
+      <div class="stit">Pinned Component</div>
+      <div class="dv-pinned" id="dv-pinned">None selected</div>
+      <div class="stit">Data Capture</div>
+      <div id="dv-stream"></div>
+      <div class="stit" style="margin-top:6px">Active Faults</div>
+      <div id="dv-faults-list"></div>
+      <div class="stit" style="margin-top:6px">Live Issue Log</div>
+      <div class="dv-issues" id="dv-issues"></div>
+    </div>
+    </div>
+  </div>
+</div>
+
+<!-- TIMELINE -->
+<div class="tl">
+  <div class="tl-lbl">Event Log</div>
+  <div class="tl-track"><div class="tl-inner" id="tl-inner"></div></div>
+</div>
+
+<script src="src/app.js"></script>
+</body>
+</html>

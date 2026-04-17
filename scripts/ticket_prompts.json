@@ -1,0 +1,42 @@
+[
+  {
+    "file": "ticket-yard-01.jpg",
+    "prompt": "drone POV aerial of a shipping container yard, stacked containers, forklifts, late afternoon light, crisp shadows, 16:9, photorealistic, high detail, stable camera, on-screen ML detection overlay with thin yellow bounding boxes, label tags, confidence scores (0.86-0.97), minimal HUD, realistic video still"
+  },
+  {
+    "file": "ticket-yard-02.jpg",
+    "prompt": "drone POV aerial of an industrial yard with cranes and containers near water, clear daylight, 16:9, photorealistic, high detail, on-screen ML detection overlay with thin yellow bounding boxes, label tags, confidence scores (0.86-0.97), minimal HUD, realistic video still"
+  },
+  {
+    "file": "ticket-warehouse-01.jpg",
+    "prompt": "drone POV aerial of a warehouse loading zone with trucks at docks, dusty ground, mid day clarity, 16:9, photorealistic, high detail, on-screen ML detection overlay with thin yellow bounding boxes, label tags (truck, person), confidence scores (0.86-0.97), minimal HUD, realistic video still"
+  },
+  {
+    "file": "ticket-night-01.jpg",
+    "prompt": "drone POV aerial of a fenced industrial compound at night, floodlights, high contrast, 16:9, photorealistic, high detail, on-screen ML detection overlay with thin yellow bounding boxes, label tags (vehicle, person), confidence scores (0.80-0.95), minimal HUD, realistic video still"
+  },
+  {
+    "file": "ticket-perimeter-01.jpg",
+    "prompt": "drone POV aerial of a perimeter fence and checkpoint road, barriers and two vehicles, sparse terrain, midday clarity, 16:9, photorealistic, high detail, on-screen ML detection overlay with thin yellow bounding boxes, label tags (vehicle, person), confidence scores (0.84-0.96), minimal HUD, realistic video still"
+  },
+  {
+    "file": "ticket-drone-01.jpg",
+    "prompt": "drone POV aerial of a city grid, rooftops and alleys, slight camera tilt, 16:9, photorealistic, high detail, on-screen ML detection overlay with thin yellow bounding boxes, label tags (person, vehicle), confidence scores (0.82-0.95), minimal HUD, realistic video still"
+  },
+  {
+    "file": "ticket-urban-01.jpg",
+    "prompt": "drone POV aerial of urban rooftops with HVAC units and narrow alleys, late day light, 16:9, photorealistic, high detail, on-screen ML detection overlay with thin yellow bounding boxes, label tags, confidence scores (0.82-0.95), minimal HUD, realistic video still"
+  },
+  {
+    "file": "ticket-thermal-01.jpg",
+    "prompt": "drone POV aerial thermal style image of a rocky hillside with two heat signatures near brush, infrared palette, 16:9, high detail, on-screen ML detection overlay with thin yellow bounding boxes, label tags (person), confidence scores (0.90-0.98), minimal HUD, realistic video still"
+  },
+  {
+    "file": "ticket-fire-01.jpg",
+    "prompt": "drone POV aerial of a wildfire front with smoke and fireline near rural structures, late afternoon haze, 16:9, photorealistic, high detail, on-screen ML detection overlay with thin yellow bounding boxes, label tags (fire, vehicle), confidence scores (0.84-0.96), minimal HUD, realistic video still"
+  },
+  {
+    "file": "ticket-ridge-01.jpg",
+    "prompt": "drone POV aerial of a ridgeline ranch terrain with a lone person near brush, clear daylight, 16:9, photorealistic, high detail, on-screen ML detection overlay with thin yellow bounding boxes, label tags (person), confidence scores (0.88-0.97), minimal HUD, realistic video still"
+  }
+]
