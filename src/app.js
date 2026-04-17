@@ -58,6 +58,26 @@ function addLabel(lat,lng,label,col){
   var m=L.marker([lat,lng],{icon:L.divIcon({html:h,className:'',iconSize:[120,24],iconAnchor:[8,12]}),interactive:false}).addTo(map);
   layers.push(m);
 }
+function addCoverArea(center,scale){
+  if(!center||!scale) return;
+  var lat=center[0],lng=center[1];
+  var sl=scale.lat,sg=scale.lng;
+  var pts=[
+    [lat+sl*1.2,lng-sg*1.1],
+    [lat+sl*1.4,lng+sg*0.4],
+    [lat+sl*0.6,lng+sg*1.3],
+    [lat-sl*0.5,lng+sg*1.2],
+    [lat-sl*1.2,lng-sg*0.2],
+    [lat-sl*0.8,lng-sg*1.3]
+  ];
+  var p=L.polygon(pts,{color:'#86efac',weight:1,fillColor:'#86efac',fillOpacity:0.16,opacity:.35}).addTo(map);
+  layers.push(p);
+}
+function getCoverScale(scene){
+  if(scene==='fire') return {lat:0.06,lng:0.08};
+  if(scene==='quake') return {lat:0.035,lng:0.05};
+  return {lat:0.045,lng:0.06};
+}
 
 function droneColor(d){
   if(d.dot==='active') return '#22c55e';
@@ -1547,6 +1567,7 @@ function loadScene(name){
   clearLayers();
   map.flyTo(s.center,s.zoom,{duration:1.1,easeLinearity:.4});
   setTimeout(function(){
+    addCoverArea(s.center,getCoverScale(name));
     s.zones.forEach(function(z){addZone(z.c,z.col,z.o)});
     if(s.perimeters) s.perimeters.forEach(function(p){addPerimeter(p.pts,p.col)});
     if(s.routes) s.routes.forEach(function(r){addRoute(r.pts,r.col,r.dash,r.w)});
@@ -1562,7 +1583,9 @@ function loadScene(name){
   renderFleet(s.fleet);
   renderAlerts(s.alerts);
   renderHud(s.hud);
+  initWeather(name);
   renderWx(s.wx);
+  startWeatherTick(name);
   renderCmp(s.cmp);
   renderSources(s);
   var mr=document.getElementById('map-replay');if(mr)mr.textContent=s.replay||'Replay · Public datasets';
@@ -1679,3 +1702,7 @@ initFeed('flood');
 loadScene('flood');
 bindTicketModal();
 setNavView('operations',{preserveScene:true});
+var exportBtn=document.getElementById('wx-export');
+if(exportBtn){
+  exportBtn.addEventListener('click',function(){buildDataset(lastMapScene);});
+}

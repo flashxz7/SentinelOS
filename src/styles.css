@@ -168,6 +168,8 @@ path.zone-fill{mix-blend-mode:screen}
 @keyframes ping{0%{transform:scale(1);opacity:.8}80%{transform:scale(2.4);opacity:0}100%{opacity:0}}
 
 /* ── WEATHER ── */
+.wx-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px}
+.wx-export{padding:4px 8px;font-size:8px}
 .wx-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
 .wx-c{background:var(--bg-c);border:1px solid var(--b);border-radius:8px;padding:10px}
 .wx-l{font-size:9px;color:var(--t3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px}
