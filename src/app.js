@@ -69,6 +69,13 @@ setTimeout(function(){
   }
 },10000);
 
+var mapFallbackBtn=document.getElementById('map-fallback');
+if(mapFallbackBtn){
+  mapFallbackBtn.addEventListener('click',function(){
+    useFallbackBasemap('Offline basemap active');
+  });
+}
+
 var layers=[];
 var droneMarkers={};
 function clearLayers(){layers.forEach(function(l){map.removeLayer(l)});layers=[];droneMarkers={};}
