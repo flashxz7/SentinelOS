@@ -84,104 +84,102 @@ function droneColor(d){
   if(d.dot==='active') return '#22c55e';
   if(d.dot==='transit') return '#3b82f6';
   if(d.dot==='delivery') return '#f97316';
-  if(d.dot==='standby') return '#8b89a0';
-  return '#a78bfa';
-}
-function addDrone(d){
-  var col=droneColor(d);
-  var rot=(d.hdg||0)+'deg';
-  var h='<div class="mini-drone" style="--md:'+col+';--rot:'+rot+'"><span></span></div>';
-  var m=L.marker([d.lat,d.lng],{icon:L.divIcon({html:h,className:'drone-marker',iconSize:[18,18],iconAnchor:[9,9]})}).addTo(map);
-  m.on('click',function(){handleDroneClick(d);});
-  droneMarkers[d.id]=m;
-  layers.push(m);
-}
-function updateDroneMarker(d){
-  if(d.homeLat==null){d.homeLat=d.lat;d.homeLng=d.lng;}
-  var dt=2.5;
-  var rad=((d.hdg||0)*Math.PI)/180;
-  var drift=((d.spd||6)*dt)/111000;
-  var jitter=(Math.random()-.5)*drift*.3;
-  var moveLat=Math.cos(rad)*drift+jitter;
-  var moveLng=Math.sin(rad)*drift+jitter;
-  var nextLat=d.lat+moveLat;
-  var nextLng=d.lng+moveLng;
-  var maxDist=0.0025;
-  if(Math.abs(nextLat-d.homeLat)>maxDist) moveLat*=-0.6;
-  if(Math.abs(nextLng-d.homeLng)>maxDist) moveLng*=-0.6;
-  d.lat=parseFloat((d.lat+moveLat).toFixed(6));
-  d.lng=parseFloat((d.lng+moveLng).toFixed(6));
-  var marker=droneMarkers[d.id];
-  if(!marker){addDrone(d);marker=droneMarkers[d.id];}
-  if(marker){
-    marker.setLatLng([d.lat,d.lng]);
-    var el=marker.getElement();
-    if(el){
-      var md=el.querySelector('.mini-drone');
-      if(md){
-        md.style.setProperty('--rot',(d.hdg||0)+'deg');
-        md.style.setProperty('--md',droneColor(d));
-      }
+    group.position.y=0.42;
+
+    var bodyMat=new THREE.MeshPhysicalMaterial({color:0x0b0c10,metalness:0.85,roughness:0.22,clearcoat:0.6,clearcoatRoughness:0.25});
+    var shellMat=new THREE.MeshPhysicalMaterial({color:0x141927,metalness:0.65,roughness:0.28});
+    var accentMat=new THREE.MeshStandardMaterial({color:0x7c3aed,emissive:0x2b0f4b,emissiveIntensity:1.1,metalness:0.4,roughness:0.2});
+    var accentMat2=new THREE.MeshStandardMaterial({color:0x8be3ff,emissive:0x0b2b33,emissiveIntensity:0.95,metalness:0.3,roughness:0.18});
+    var glassMat=new THREE.MeshPhysicalMaterial({color:0xa5f3fc,transparent:true,opacity:0.68,roughness:0.08,metalness:0.1,clearcoat:0.2});
+
+    var baseGeo=new THREE.BoxGeometry(3.9,0.38,2.7);
+    var base=new THREE.Mesh(baseGeo,bodyMat);
+    base.position.y=0.12;
+    group.add(base);
+
+    var shellGeo=new THREE.BoxGeometry(3.4,0.2,2.2);
+    var shell=new THREE.Mesh(shellGeo,shellMat);
+    shell.position.y=0.36;
+    group.add(shell);
+
+    var deck=new THREE.Mesh(new THREE.BoxGeometry(2.25,0.12,1.35),glassMat);
+    deck.position.set(0,0.52,0);
+    group.add(deck);
+
+    var frontStrip=new THREE.Mesh(new THREE.BoxGeometry(2.4,0.08,0.22),accentMat);
+    frontStrip.position.set(0,-0.04,1.18);
+    group.add(frontStrip);
+
+    var sideLeft=new THREE.Mesh(new THREE.BoxGeometry(0.18,0.08,2.1),accentMat2);
+    sideLeft.position.set(-1.65,0.08,0);
+    group.add(sideLeft);
+    var sideRight=new THREE.Mesh(new THREE.BoxGeometry(0.18,0.08,2.1),accentMat2);
+    sideRight.position.set(1.65,0.08,0);
+    group.add(sideRight);
+
+    var armMat=new THREE.MeshStandardMaterial({color:0x0b0c12,metalness:0.7,roughness:0.35});
+    var armGeo=new THREE.CylinderGeometry(0.12,0.12,2.8,18);
+    function addArm(x,z){
+      var arm=new THREE.Mesh(armGeo,armMat);
+      arm.rotation.z=Math.PI/2;
+      arm.rotation.y=Math.atan2(x,z);
+      arm.position.set(x*0.35,0.08,z*0.35);
+      group.add(arm);
     }
-  }
-}
-function updateDroneMarkers(scene){
-  var ld=LD[scene];if(!ld)return;
-  ld.drones.forEach(updateDroneMarker);
-}
+    addArm(-2.3,1.6);
+    addArm(2.3,1.6);
+    addArm(-2.3,-1.6);
+    addArm(2.3,-1.6);
 
-// SENSOR HELPERS
-function voltFromBatt(b){return (13.6+(b/100)*3.2).toFixed(1)}
-function gasFromVoc(v){
-  if(v<50) return Math.round(50000-v*580);
-  if(v<200) return Math.round(20000-(v-50)*98);
-  if(v<500) return Math.round(5100-(v-200)*9.8);
-  return Math.max(480,Math.round(2160-(v-500)*1.6));
-}
-function iaqFromVoc(v){
-  if(v<50) return Math.round(v*.8+10);
-  if(v<200) return Math.round(50+(v-50)*.8);
-  if(v<500) return Math.round(170+(v-200)*.48);
-  return Math.min(500,Math.round(314+(v-500)*.22));
-}
-function rssiFromSig(s){
-  var b=s>=4?-61:s>=3?-72:-80;
-  return Math.round(b-Math.random()*5);
-}
-function hexToRgb(hex){hex=hex.replace('#','');return parseInt(hex.slice(0,2),16)+','+parseInt(hex.slice(2,4),16)+','+parseInt(hex.slice(4,6),16)}
-function riskColor(s){return s>=90?'#ef4444':s>=75?'#f97316':s>=50?'#eab308':'#22c55e'}
-function riskLabel(s){return s>=90?'CRITICAL':s>=75?'HIGH':s>=50?'MODERATE':'LOW'}
-function numFlash(el){el.classList.remove('nf');void el.offsetWidth;el.classList.add('nf')}
+    var hubMat=new THREE.MeshStandardMaterial({color:0x0f1218,metalness:0.75,roughness:0.3});
+    var discMat=new THREE.MeshStandardMaterial({color:0x0c0f14,metalness:0.2,roughness:0.5,transparent:true,opacity:0.28});
+    var bladeMat=new THREE.MeshStandardMaterial({color:0x0c0f14,metalness:0.2,roughness:0.5,transparent:true,opacity:0.5});
+    var rotors=[];
+    function makeRotor(x,z){
+      var rotor=new THREE.Group();
+      rotor.position.set(x,0.32,z);
+      var hub=new THREE.Mesh(new THREE.CylinderGeometry(0.22,0.22,0.1,20),hubMat);
+      hub.rotation.x=Math.PI/2;
+      rotor.add(hub);
+      var disc=new THREE.Mesh(new THREE.CircleGeometry(0.9,40),discMat);
+      disc.rotation.x=-Math.PI/2;
+      disc.position.y=0.02;
+      rotor.add(disc);
+      var bladeGeo=new THREE.BoxGeometry(1.4,0.02,0.14);
+      var blade1=new THREE.Mesh(bladeGeo,bladeMat);
+      blade1.position.set(0.7,0,0);
+      var blade2=new THREE.Mesh(bladeGeo,bladeMat);
+      blade2.position.set(-0.7,0,0);
+      blade2.rotation.y=Math.PI;
+      var blade3=new THREE.Mesh(bladeGeo,bladeMat);
+      blade3.rotation.y=Math.PI/2;
+      blade3.position.set(0,0,0.7);
+      var blade4=new THREE.Mesh(bladeGeo,bladeMat);
+      blade4.rotation.y=-Math.PI/2;
+      blade4.position.set(0,0,-0.7);
+      rotor.add(blade1,blade2,blade3,blade4);
+      var arc=new THREE.Mesh(new THREE.RingGeometry(0.36,0.42,40,1,Math.PI*0.1,Math.PI*1.3),accentMat2);
+      arc.rotation.x=-Math.PI/2;
+      arc.position.y=0.06;
+      rotor.add(arc);
+      group.add(rotor);
+      rotors.push(rotor);
+    }
+    makeRotor(-2.35,1.6);
+    makeRotor(2.35,1.6);
+    makeRotor(-2.35,-1.6);
+    makeRotor(2.35,-1.6);
 
-// LIVE DRONE STATE
-var LD={
-  flood:{
-    score:87,
-    drones:[
-      {id:'SNT-001',dot:'active',state:'Scanning',  batt:91,alt:62.1,spd:7.2,hdg:142,sig:4,t:84.2,h:97.14,p:29.413,voc:34, lat:30.01350,lng:-99.80200,rssi:-64,cpu:11,mcu_t:40,seq:8247,gas_r:0,iaq:0},
-      {id:'SNT-002',dot:'transit',state:'In Transit',batt:83,alt:71.4,spd:9.8,hdg:218,sig:4,t:83.8,h:96.83,p:29.391,voc:31, lat:30.00550,lng:-99.78600,rssi:-67,cpu:13,mcu_t:42,seq:6103,gas_r:0,iaq:0},
-      {id:'SNT-003',dot:'active',state:'Scanning',  batt:77,alt:58.8,spd:6.5,hdg:87, sig:3,t:83.5,h:97.41,p:29.402,voc:28, lat:29.99400,lng:-99.78000,rssi:-74,cpu:10,mcu_t:39,seq:5891,gas_r:0,iaq:0},
-      {id:'SNT-004',dot:'delivery',state:'Delivering',batt:68,alt:45.2,spd:11.2,hdg:310,sig:4,t:84.0,h:97.02,p:29.381,voc:33,lat:30.00800,lng:-99.81200,rssi:-63,cpu:14,mcu_t:44,seq:7428,gas_r:0,iaq:0},
-      {id:'SNT-005',dot:'active',state:'Scanning',  batt:55,alt:74.0,spd:7.8,hdg:195,sig:3,t:84.4,h:97.58,p:29.424,voc:36, lat:30.02100,lng:-99.80600,rssi:-76,cpu:12,mcu_t:41,seq:4812,gas_r:0,iaq:0},
-      {id:'SNT-006',dot:'transit',state:'In Transit',batt:72,alt:61.4,spd:8.8,hdg:165,sig:4,t:84.0,h:96.54,p:29.400,voc:30, lat:30.01800,lng:-99.79200,rssi:-68,cpu:13,mcu_t:41,seq:4931,gas_r:0,iaq:0},
-      {id:'SNT-007',dot:'active',state:'Scanning',batt:64,alt:52.6,spd:6.9,hdg:102,sig:3,t:84.1,h:97.02,p:29.395,voc:27, lat:30.02650,lng:-99.81800,rssi:-73,cpu:12,mcu_t:40,seq:5202,gas_r:0,iaq:0},
-      {id:'SNT-008',dot:'delivery',state:'Delivering',batt:61,alt:48.1,spd:10.4,hdg:284,sig:4,t:83.6,h:96.82,p:29.388,voc:32, lat:30.00200,lng:-99.80000,rssi:-65,cpu:14,mcu_t:43,seq:5350,gas_r:0,iaq:0},
-      {id:'SNT-009',dot:'active',state:'Scanning',batt:58,alt:69.0,spd:7.1,hdg:135,sig:3,t:84.3,h:97.18,p:29.419,voc:35, lat:29.98850,lng:-99.79250,rssi:-74,cpu:11,mcu_t:41,seq:4682,gas_r:0,iaq:0},
-      {id:'SNT-010',dot:'standby',state:'Standby',batt:96,alt:40.0,spd:3.5,hdg:40, sig:4,t:83.9,h:96.40,p:29.405,voc:29, lat:30.03000,lng:-99.80000,rssi:-62,cpu:9,mcu_t:38,seq:3991,gas_r:0,iaq:0}
-    ],
-    features:[{n:'Pressure Vel.',v:'-0.18 inHg/hr',hot:true},{n:'Humidity Delta',v:'+4.3%/hr',hot:true},{n:'Gas Resistance',v:'Nominal (48 kOhm)',hot:false},{n:'Wind Shear Est.',v:'Moderate',hot:false}],
-    ppFields:{dp:'-0.18 inHg/hr',dh:'+4.3%/hr',dgr:'-2.1 kOhm/hr',th:'0.62 deg',ws:'Moderate'},
-    sub:'Flood imminent · 3 critical detections'
-  },
-  quake:{
-    score:79,
-    drones:[
-      {id:'SNT-011',dot:'active',state:'Scanning',  batt:79,alt:55.3,spd:6.1,hdg:78, sig:4,t:72.4,h:44.83,p:29.882,voc:342,lat:31.04600,lng:-104.83500,rssi:-61,cpu:12,mcu_t:41,seq:9312,gas_r:0,iaq:0},
-      {id:'SNT-012',dot:'delivery',state:'Delivering',batt:58,alt:40.1,spd:10.5,hdg:245,sig:3,t:72.1,h:45.21,p:29.891,voc:28, lat:31.04400,lng:-104.82800,rssi:-75,cpu:14,mcu_t:43,seq:7204,gas_r:0,iaq:0},
-      {id:'SNT-013',dot:'active',state:'Scanning',  batt:85,alt:68.4,spd:7.3,hdg:132,sig:4,t:72.6,h:44.51,p:29.873,voc:318,lat:31.04200,lng:-104.82500,rssi:-62,cpu:11,mcu_t:40,seq:8801,gas_r:0,iaq:0},
-      {id:'SNT-014',dot:'transit',state:'In Transit',batt:66,alt:50.0,spd:9.2,hdg:290,sig:4,t:72.3,h:44.91,p:29.880,voc:31, lat:31.05000,lng:-104.83800,rssi:-65,cpu:13,mcu_t:42,seq:6530,gas_r:0,iaq:0},
-      {id:'SNT-015',dot:'active',state:'Scanning',  batt:92,alt:72.2,spd:6.8,hdg:15,  sig:4,t:72.5,h:45.12,p:29.901,voc:15, lat:31.04750,lng:-104.83400,rssi:-60,cpu:10,mcu_t:39,seq:9907,gas_r:0,iaq:0},
-      {id:'SNT-016',dot:'transit',state:'In Transit',batt:73,alt:56.9,spd:8.9,hdg:210,sig:4,t:72.2,h:44.92,p:29.887,voc:45, lat:31.03950,lng:-104.84200,rssi:-64,cpu:13,mcu_t:42,seq:6144,gas_r:0,iaq:0},
+    var legMat=new THREE.MeshStandardMaterial({color:0x0b0c12,metalness:0.35,roughness:0.7});
+    [[-1.2,-0.1,1.2],[1.2,-0.1,1.2],[-1.2,-0.1,-1.2],[1.2,-0.1,-1.2]].forEach(function(p){
+      var leg=new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.08,0.5,12),legMat);
+      leg.position.set(p[0],p[1],p[2]);
+      group.add(leg);
+    });
+
+    var cam=new THREE.Mesh(new THREE.SphereGeometry(0.2,16,16),accentMat2);
+    cam.position.set(0,-0.05,1.28);
+    group.add(cam);
       {id:'SNT-017',dot:'active',state:'Scanning',batt:69,alt:60.4,spd:6.7,hdg:96, sig:3,t:72.7,h:44.60,p:29.874,voc:280,lat:31.05200,lng:-104.82900,rssi:-72,cpu:12,mcu_t:40,seq:7022,gas_r:0,iaq:0},
       {id:'SNT-018',dot:'delivery',state:'Delivering',batt:62,alt:44.6,spd:10.9,hdg:320,sig:3,t:72.0,h:45.02,p:29.892,voc:60, lat:31.03650,lng:-104.82650,rssi:-74,cpu:15,mcu_t:44,seq:5352,gas_r:0,iaq:0},
       {id:'SNT-019',dot:'active',state:'Scanning',batt:81,alt:66.8,spd:7.1,hdg:150,sig:4,t:72.8,h:44.72,p:29.878,voc:260,lat:31.04050,lng:-104.82050,rssi:-63,cpu:11,mcu_t:40,seq:6422,gas_r:0,iaq:0},
@@ -1561,14 +1559,14 @@ function buildDroneMesh(){
   ];
   var orbiters=[];
   var sphereGeo=new THREE.SphereGeometry(0.34,24,24);
-  var ringGeo=new THREE.TorusGeometry(0.55,0.05,12,40);
-  var discGeo=new THREE.CircleGeometry(0.62,40);
+  var ringGeo=new THREE.TorusGeometry(0.6,0.05,12,40);
+  var discGeo=new THREE.CircleGeometry(0.68,40);
   [
-    {x:-0.75,y:0.52,z:0.3,mat:0,tilt:0.5},
-    {x:0.0,y:0.58,z:0.65,mat:1,tilt:-0.7},
-    {x:0.9,y:0.54,z:0.1,mat:2,tilt:0.3},
-    {x:-0.25,y:0.4,z:-0.55,mat:0,tilt:-0.5},
-    {x:0.6,y:0.32,z:-0.25,mat:1,tilt:0.8}
+    {x:-0.8,y:0.56,z:0.32,mat:0,tilt:0.5},
+    {x:0.0,y:0.62,z:0.7,mat:1,tilt:-0.7},
+    {x:0.95,y:0.58,z:0.1,mat:2,tilt:0.3},
+    {x:-0.3,y:0.44,z:-0.6,mat:0,tilt:-0.5},
+    {x:0.62,y:0.36,z:-0.28,mat:1,tilt:0.8}
   ].forEach(function(o){
     var sphere=new THREE.Mesh(sphereGeo,orbMats[o.mat]);
     sphere.position.set(o.x,o.y,o.z);
@@ -1593,17 +1591,17 @@ function buildDroneMesh(){
 }
 function buildHotspots(group){
   var hotspotMap={
-    'core':new THREE.Vector3(0,0.35,0.1),
-    'battery':new THREE.Vector3(0,0.2,-0.2),
-    'camera':new THREE.Vector3(0,0.05,1.35),
-    'lidar':new THREE.Vector3(0,0.62,0),
-    'prop-fl':new THREE.Vector3(-2.2,0.28,1.6),
-    'prop-fr':new THREE.Vector3(2.2,0.28,1.6),
-    'prop-rl':new THREE.Vector3(-2.2,0.28,-1.6),
-    'prop-rr':new THREE.Vector3(2.2,0.28,-1.6),
-    'rf':new THREE.Vector3(0.8,0.18,0.2),
-    'gps':new THREE.Vector3(0.8,0.62,-0.1),
-    'sensor':new THREE.Vector3(-0.8,0.18,0.2)
+    'core':new THREE.Vector3(0,0.32,0.2),
+    'battery':new THREE.Vector3(0,0.2,-0.25),
+    'camera':new THREE.Vector3(0,-0.02,1.25),
+    'lidar':new THREE.Vector3(0,0.6,0),
+    'prop-fl':new THREE.Vector3(-2.35,0.32,1.6),
+    'prop-fr':new THREE.Vector3(2.35,0.32,1.6),
+    'prop-rl':new THREE.Vector3(-2.35,0.32,-1.6),
+    'prop-rr':new THREE.Vector3(2.35,0.32,-1.6),
+    'rf':new THREE.Vector3(0.9,0.2,0.1),
+    'gps':new THREE.Vector3(0.9,0.6,-0.1),
+    'sensor':new THREE.Vector3(-0.9,0.2,0.1)
   };
   var out={};
   document.querySelectorAll('.dv-hot').forEach(function(el){
