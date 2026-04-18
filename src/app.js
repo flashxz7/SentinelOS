@@ -13,20 +13,59 @@ var map=L.map('map',{zoomControl:true,attributionControl:false}).setView([30.01,
 window.addEventListener('resize',function(){map.invalidateSize();});
 var loaded=false;
 var bn=document.getElementById('tile-bn');
-function onLoad(){if(!loaded){loaded=true;bn.classList.add('hidden');setTimeout(function(){bn.style.display='none'},600)}}
+var fallbackActive=false;
+var tileErrors=0;
+var fallbackTimer=null;
+function onLoad(){
+  if(!loaded){
+    loaded=true;
+    if(bn){bn.classList.add('hidden');setTimeout(function(){bn.style.display='none'},600)}
+    if(fallbackTimer){clearTimeout(fallbackTimer);fallbackTimer=null;}
+  }
+}
+function useFallbackBasemap(msg){
+  if(fallbackActive) return;
+  fallbackActive=true;
+  var mapEl=document.getElementById('map');
+  if(mapEl) mapEl.classList.add('fallback');
+  if(bn){
+    var t=bn.querySelector('.tile-bn-t');
+    var s=bn.querySelector('.tile-bn-s');
+    if(t) t.textContent=msg||'Offline basemap active';
+    if(s) s.textContent='';
+    bn.classList.add('hidden');
+    setTimeout(function(){bn.style.display='none'},600);
+  }
+  var osm=L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19});
+  osm.on('tileload',onLoad);
+  osm.addTo(map);
+}
+function onTileError(){
+  tileErrors+=1;
+  if(tileErrors>6 && !loaded){
+    useFallbackBasemap('Switching to fallback basemap');
+  }
+}
+fallbackTimer=setTimeout(function(){
+  if(!loaded) useFallbackBasemap('Switching to fallback basemap');
+},6500);
 var esri=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19}).addTo(map);
 esri.on('tileload',onLoad);
+esri.on('tileerror',onTileError);
 L.tileLayer('https://services.arcgisonline.com/ArcGIS/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,opacity:0.35}).addTo(map);
 L.tileLayer('https://services.arcgisonline.com/ArcGIS/rest/services/World_Shaded_Relief/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,opacity:0.18}).addTo(map);
 setTimeout(function(){
   if(!loaded){
     var g=L.tileLayer('https://mt{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',{maxZoom:20,subdomains:'0123'}).addTo(map);
     g.on('tileload',onLoad);
+    g.on('tileerror',onTileError);
   }
 },5000);
 setTimeout(function(){
   if(!loaded){
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png',{maxZoom:20}).addTo(map);
+    var c=L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png',{maxZoom:20}).addTo(map);
+    c.on('tileload',onLoad);
+    c.on('tileerror',onTileError);
   }
 },10000);
 
