@@ -1300,6 +1300,44 @@ function seedFromId(id){
   for(var i=0;i<id.length;i++) sum=(sum*31+id.charCodeAt(i))%10000;
   return sum;
 }
+function makeBasicOrbitControls(camera,dom,target){
+  var state={yaw:0.8,pitch:0.55,distance:9,target:target,dragging:false,lastX:0,lastY:0};
+  function update(){
+    var x=state.target.x+state.distance*Math.cos(state.pitch)*Math.sin(state.yaw);
+    var y=state.target.y+state.distance*Math.sin(state.pitch);
+    var z=state.target.z+state.distance*Math.cos(state.pitch)*Math.cos(state.yaw);
+    camera.position.set(x,y,z);
+    camera.lookAt(state.target);
+  }
+  function onDown(e){
+    state.dragging=true;state.lastX=e.clientX;state.lastY=e.clientY;
+    if(dom.setPointerCapture) dom.setPointerCapture(e.pointerId);
+  }
+  function onMove(e){
+    if(!state.dragging) return;
+    var dx=(e.clientX-state.lastX)*0.005;
+    var dy=(e.clientY-state.lastY)*0.005;
+    state.yaw-=dx;
+    state.pitch=clamp(state.pitch-dy,0.1,Math.PI-0.1);
+    state.lastX=e.clientX;state.lastY=e.clientY;
+    update();
+  }
+  function onUp(e){
+    state.dragging=false;
+    if(dom.releasePointerCapture) dom.releasePointerCapture(e.pointerId);
+  }
+  function onWheel(e){
+    state.distance=clamp(state.distance+e.deltaY*0.01,4.5,16);
+    update();
+  }
+  dom.addEventListener('pointerdown',onDown);
+  dom.addEventListener('pointermove',onMove);
+  dom.addEventListener('pointerup',onUp);
+  dom.addEventListener('pointerleave',onUp);
+  dom.addEventListener('wheel',onWheel,{passive:true});
+  update();
+  return {update:update,target:state.target};
+}
 function initDrone3d(){
   if(threeState && threeState.renderer) return;
   var container=document.getElementById('dv-3d');
@@ -1308,6 +1346,7 @@ function initDrone3d(){
   dv.classList.add('dv-3d-on');
   container.innerHTML='';
   var renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});
+  renderer.setClearColor(0x0b0c12,1);
   renderer.setPixelRatio(window.devicePixelRatio||1);
   renderer.setSize(container.clientWidth,container.clientHeight);
   if(renderer.outputColorSpace) renderer.outputColorSpace=THREE.SRGBColorSpace;
@@ -1319,15 +1358,21 @@ function initDrone3d(){
   var camera=new THREE.PerspectiveCamera(45,container.clientWidth/container.clientHeight,0.1,100);
   camera.position.set(7,5.2,8.5);
 
-  var controls=new THREE.OrbitControls(camera,renderer.domElement);
-  controls.enableDamping=true;
-  controls.dampingFactor=0.08;
-  controls.minDistance=4.5;
-  controls.maxDistance=16;
-  controls.minPolarAngle=0.2;
-  controls.maxPolarAngle=Math.PI-0.2;
-  controls.target.set(0,0.6,0);
-  controls.update();
+  var target=new THREE.Vector3(0,0.6,0);
+  var controls;
+  if(THREE.OrbitControls){
+    controls=new THREE.OrbitControls(camera,renderer.domElement);
+    controls.enableDamping=true;
+    controls.dampingFactor=0.08;
+    controls.minDistance=4.5;
+    controls.maxDistance=16;
+    controls.minPolarAngle=0.2;
+    controls.maxPolarAngle=Math.PI-0.2;
+    controls.target.copy(target);
+    controls.update();
+  } else {
+    controls=makeBasicOrbitControls(camera,renderer.domElement,target);
+  }
 
   var ambient=new THREE.AmbientLight(0xffffff,0.55);
   scene.add(ambient);
@@ -1378,6 +1423,7 @@ function initDrone3d(){
     renderer.setSize(w,h);
   }
   window.addEventListener('resize',onResize);
+  setTimeout(onResize,80);
 
   function animate(){
     if(!threeState) return;
@@ -2013,7 +2059,7 @@ var S={
       approval:{label:'Review',by:'Flood Desk',time:'09:37:10Z'},
       gps:'30.0200 N, 99.8080 W',drone:'SNT-005',eta:'11m',tags:['Sensor Buoy','Water Marker']}
     ],
-    zones:[{c:[[30.018,-99.812],[30.014,-99.798],[30.004,-99.795],[30.000,-99.810],[30.008,-99.818]],col:'#ef4444',o:.45},{c:[[30.002,-99.792],[29.996,-99.780],[29.988,-99.785],[29.990,-99.798]],col:'#ef4444',o:.42},{c:[[30.013,-99.804],[30.010,-99.797],[30.006,-99.799],[30.008,-99.806]],col:'#ef4444',o:.55},{c:[[30.022,-99.820],[30.018,-99.802],[30.010,-99.806],[30.012,-99.822]],col:'#f97316',o:.38},{c:[[29.994,-99.778],[29.988,-99.764],[29.980,-99.770],[29.984,-99.785]],col:'#f97316',o:.38},{c:[[30.006,-99.808],[30.002,-99.798],[29.996,-99.800],[29.998,-99.810]],col:'#f97316',o:.35},{c:[[30.028,-99.808],[30.024,-99.792],[30.018,-99.796],[30.020,-99.812]],col:'#eab308',o:.32},{c:[[29.980,-99.802],[29.976,-99.790],[29.970,-99.795],[29.974,-99.806]],col:'#eab308',o:.30},{c:[[30.032,-99.796],[30.028,-99.782],[30.022,-99.786],[30.025,-99.800]],col:'#22c55e',o:.28},{c:[[29.975,-99.814],[29.971,-99.800],[29.965,-99.805],[29.968,-99.818]],col:'#22c55e',o:.25}],
+    zones:[{c:[[30.018,-99.812],[30.014,-99.798],[30.004,-99.795],[30.000,-99.810],[30.008,-99.818]],col:'#ef4444',o:.45},{c:[[30.002,-99.792],[29.996,-99.780],[29.988,-99.785],[29.990,-99.798]],col:'#ef4444',o:.42},{c:[[30.013,-99.804],[30.010,-99.797],[30.006,-99.799],[30.008,-99.806]],col:'#ef4444',o:.55},{c:[[30.016,-99.790],[30.012,-99.782],[30.006,-99.786],[30.010,-99.794]],col:'#ef4444',o:.48},{c:[[30.024,-99.802],[30.020,-99.794],[30.015,-99.798],[30.018,-99.806]],col:'#ef4444',o:.46},{c:[[29.999,-99.806],[29.995,-99.798],[29.990,-99.802],[29.993,-99.810]],col:'#ef4444',o:.44},{c:[[30.022,-99.820],[30.018,-99.802],[30.010,-99.806],[30.012,-99.822]],col:'#f97316',o:.38},{c:[[29.994,-99.778],[29.988,-99.764],[29.980,-99.770],[29.984,-99.785]],col:'#f97316',o:.38},{c:[[30.006,-99.808],[30.002,-99.798],[29.996,-99.800],[29.998,-99.810]],col:'#f97316',o:.35},{c:[[30.028,-99.808],[30.024,-99.792],[30.018,-99.796],[30.020,-99.812]],col:'#eab308',o:.32},{c:[[29.980,-99.802],[29.976,-99.790],[29.970,-99.795],[29.974,-99.806]],col:'#eab308',o:.30},{c:[[30.032,-99.796],[30.028,-99.782],[30.022,-99.786],[30.025,-99.800]],col:'#22c55e',o:.28},{c:[[29.975,-99.814],[29.971,-99.800],[29.965,-99.805],[29.968,-99.818]],col:'#22c55e',o:.25}],
     perimeters:[{pts:[[30.028,-99.822],[30.022,-99.790],[29.992,-99.776],[29.974,-99.804],[30.000,-99.828]],col:'#3b82f6'}],
     routes:[{pts:[[30.019,-99.816],[30.013,-99.808],[30.006,-99.802],[30.001,-99.796]],col:'#22c55e',dash:'10,6',w:3},{pts:[[30.010,-99.812],[30.004,-99.806],[29.999,-99.800]],col:'#22c55e',dash:'6,8',w:2.4}],
     blocks:[{pts:[[30.008,-99.814],[30.004,-99.810]],col:'#ef4444',dash:'2,8',w:3}],
@@ -2069,7 +2115,7 @@ var S={
       approval:{label:'Review',by:'Safety Desk',time:'11:07:40Z'},
       gps:'31.0480 N, 104.8320 W',drone:'SNT-012',eta:'6m',tags:['Emergency Beacon','Water 1L','Thermal Blanket']}
     ],
-    zones:[{c:[[31.048,-104.838],[31.046,-104.830],[31.042,-104.831],[31.043,-104.839]],col:'#ef4444',o:.48},{c:[[31.045,-104.828],[31.043,-104.822],[31.040,-104.824],[31.041,-104.830]],col:'#ef4444',o:.45},{c:[[31.0455,-104.8345],[31.044,-104.8305],[31.0415,-104.8315],[31.0425,-104.835]],col:'#ef4444',o:.55},{c:[[31.050,-104.842],[31.048,-104.834],[31.044,-104.836],[31.046,-104.844]],col:'#a855f7',o:.38},{c:[[31.041,-104.836],[31.038,-104.828],[31.035,-104.831],[31.037,-104.838]],col:'#f97316',o:.40},{c:[[31.0445,-104.8285],[31.0425,-104.8245],[31.040,-104.8255],[31.0415,-104.8295]],col:'#f97316',o:.35},{c:[[31.052,-104.836],[31.050,-104.828],[31.047,-104.830],[31.049,-104.838]],col:'#eab308',o:.32},{c:[[31.0395,-104.832],[31.037,-104.826],[31.035,-104.828],[31.037,-104.834]],col:'#eab308',o:.30},{c:[[31.054,-104.830],[31.052,-104.824],[31.049,-104.826],[31.051,-104.832]],col:'#22c55e',o:.28},{c:[[31.056,-104.836],[31.053,-104.830],[31.051,-104.832],[31.053,-104.838]],col:'#22c55e',o:.25}],
+    zones:[{c:[[31.048,-104.838],[31.046,-104.830],[31.042,-104.831],[31.043,-104.839]],col:'#ef4444',o:.48},{c:[[31.045,-104.828],[31.043,-104.822],[31.040,-104.824],[31.041,-104.830]],col:'#ef4444',o:.45},{c:[[31.0455,-104.8345],[31.044,-104.8305],[31.0415,-104.8315],[31.0425,-104.835]],col:'#ef4444',o:.55},{c:[[31.049,-104.832],[31.046,-104.824],[31.043,-104.826],[31.045,-104.834]],col:'#ef4444',o:.50},{c:[[31.038,-104.834],[31.036,-104.826],[31.033,-104.829],[31.035,-104.836]],col:'#ef4444',o:.46},{c:[[31.052,-104.840],[31.050,-104.832],[31.047,-104.834],[31.049,-104.842]],col:'#ef4444',o:.48},{c:[[31.050,-104.842],[31.048,-104.834],[31.044,-104.836],[31.046,-104.844]],col:'#a855f7',o:.38},{c:[[31.041,-104.836],[31.038,-104.828],[31.035,-104.831],[31.037,-104.838]],col:'#f97316',o:.40},{c:[[31.0445,-104.8285],[31.0425,-104.8245],[31.040,-104.8255],[31.0415,-104.8295]],col:'#f97316',o:.35},{c:[[31.052,-104.836],[31.050,-104.828],[31.047,-104.830],[31.049,-104.838]],col:'#eab308',o:.32},{c:[[31.0395,-104.832],[31.037,-104.826],[31.035,-104.828],[31.037,-104.834]],col:'#eab308',o:.30},{c:[[31.054,-104.830],[31.052,-104.824],[31.049,-104.826],[31.051,-104.832]],col:'#22c55e',o:.28},{c:[[31.056,-104.836],[31.053,-104.830],[31.051,-104.832],[31.053,-104.838]],col:'#22c55e',o:.25}],
     perimeters:[{pts:[[31.053,-104.846],[31.050,-104.820],[31.040,-104.818],[31.036,-104.842]],col:'#f97316'}],
     routes:[{pts:[[31.048,-104.842],[31.044,-104.834],[31.041,-104.830]],col:'#22c55e',dash:'10,6',w:3},{pts:[[31.046,-104.826],[31.050,-104.830],[31.053,-104.836]],col:'#22c55e',dash:'6,8',w:2.4}],
     blocks:[{pts:[[31.049,-104.840],[31.051,-104.842]],col:'#ef4444',dash:'2,8',w:3}],
@@ -2125,7 +2171,7 @@ var S={
       approval:{label:'Approved',by:'Fire Desk',time:'14:17:04Z'},
       gps:'32.3960 N, 98.7980 W',drone:'SNT-022',eta:'8m 22s',tags:['Emergency Beacon','Water 2L','Thermal Blanket','Signal Mirror']}
     ],
-    zones:[{c:[[32.415,-98.840],[32.410,-98.820],[32.398,-98.825],[32.400,-98.845]],col:'#ef4444',o:.52},{c:[[32.408,-98.815],[32.402,-98.795],[32.392,-98.802],[32.396,-98.820]],col:'#ef4444',o:.48},{c:[[32.406,-98.832],[32.402,-98.818],[32.396,-98.822],[32.400,-98.836]],col:'#ef4444',o:.58},{c:[[32.422,-98.855],[32.416,-98.835],[32.408,-98.840],[32.412,-98.858]],col:'#f97316',o:.42},{c:[[32.396,-98.798],[32.390,-98.780],[32.382,-98.788],[32.386,-98.804]],col:'#f97316',o:.40},{c:[[32.412,-98.824],[32.406,-98.808],[32.400,-98.812],[32.404,-98.828]],col:'#f97316',o:.38},{c:[[32.428,-98.840],[32.424,-98.822],[32.416,-98.828],[32.420,-98.845]],col:'#eab308',o:.34},{c:[[32.382,-98.810],[32.378,-98.796],[32.372,-98.802],[32.376,-98.815]],col:'#eab308',o:.32},{c:[[32.435,-98.830],[32.430,-98.814],[32.424,-98.820],[32.428,-98.836]],col:'#22c55e',o:.28},{c:[[32.370,-98.820],[32.366,-98.806],[32.360,-98.812],[32.364,-98.825]],col:'#22c55e',o:.25}],
+    zones:[{c:[[32.415,-98.840],[32.410,-98.820],[32.398,-98.825],[32.400,-98.845]],col:'#ef4444',o:.52},{c:[[32.408,-98.815],[32.402,-98.795],[32.392,-98.802],[32.396,-98.820]],col:'#ef4444',o:.48},{c:[[32.406,-98.832],[32.402,-98.818],[32.396,-98.822],[32.400,-98.836]],col:'#ef4444',o:.58},{c:[[32.414,-98.824],[32.410,-98.816],[32.404,-98.820],[32.408,-98.830]],col:'#ef4444',o:.50},{c:[[32.390,-98.808],[32.386,-98.796],[32.380,-98.802],[32.384,-98.812]],col:'#ef4444',o:.46},{c:[[32.422,-98.846],[32.418,-98.836],[32.412,-98.840],[32.416,-98.850]],col:'#ef4444',o:.48},{c:[[32.422,-98.855],[32.416,-98.835],[32.408,-98.840],[32.412,-98.858]],col:'#f97316',o:.42},{c:[[32.396,-98.798],[32.390,-98.780],[32.382,-98.788],[32.386,-98.804]],col:'#f97316',o:.40},{c:[[32.412,-98.824],[32.406,-98.808],[32.400,-98.812],[32.404,-98.828]],col:'#f97316',o:.38},{c:[[32.428,-98.840],[32.424,-98.822],[32.416,-98.828],[32.420,-98.845]],col:'#eab308',o:.34},{c:[[32.382,-98.810],[32.378,-98.796],[32.372,-98.802],[32.376,-98.815]],col:'#eab308',o:.32},{c:[[32.435,-98.830],[32.430,-98.814],[32.424,-98.820],[32.428,-98.836]],col:'#22c55e',o:.28},{c:[[32.370,-98.820],[32.366,-98.806],[32.360,-98.812],[32.364,-98.825]],col:'#22c55e',o:.25}],
     perimeters:[{pts:[[32.430,-98.860],[32.420,-98.828],[32.396,-98.804],[32.372,-98.820],[32.386,-98.854]],col:'#ef4444'}],
     routes:[{pts:[[32.412,-98.850],[32.406,-98.838],[32.398,-98.828],[32.392,-98.818]],col:'#22c55e',dash:'10,6',w:3},{pts:[[32.404,-98.810],[32.396,-98.804],[32.390,-98.798]],col:'#22c55e',dash:'6,8',w:2.4}],
     blocks:[{pts:[[32.402,-98.818],[32.398,-98.814]],col:'#ef4444',dash:'2,8',w:3}],
@@ -2188,6 +2234,7 @@ function bindNavToggle(){
   btn.addEventListener('click',function(){
     navCollapsed=!navCollapsed;
     document.body.classList.toggle('nav-collapsed',navCollapsed);
+    setTimeout(function(){map.invalidateSize();},140);
   });
 }
 var viewEls={
@@ -2233,6 +2280,7 @@ function setNavView(view,opts){
     } else {
       renderWorkViews(lastMapScene);
     }
+    setTimeout(function(){map.invalidateSize();},140);
     renderTickets((S[lastMapScene]&&S[lastMapScene].tickets)?S[lastMapScene].tickets:[]);
     bindTicketModal();
   } else {
@@ -2294,6 +2342,7 @@ function switchScenario(sc){
   if(dv) dv.classList.remove('on');
   layout.style.display='grid';
   loadScene(sc);
+  setTimeout(function(){map.invalidateSize();},140);
 }
 document.querySelectorAll('.tab').forEach(function(btn){
   btn.addEventListener('click',function(){
