@@ -362,7 +362,7 @@ path.zone-fill{mix-blend-mode:screen}
 .dv-stage::before{content:'';position:absolute;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 34px,rgba(124,58,237,.03) 34px,rgba(124,58,237,.03) 35px),repeating-linear-gradient(90deg,transparent,transparent 34px,rgba(124,58,237,.03) 34px,rgba(124,58,237,.03) 35px);opacity:.6;pointer-events:none}
 .dv-stage::after{content:'';position:absolute;inset:12%;background:radial-gradient(circle,var(--dv-accent),transparent 68%);opacity:.18;pointer-events:none}
 .dv-canvas{position:relative;width:min(780px,92%);aspect-ratio:16/9;perspective:1100px}
-.dv-3d{position:absolute;inset:0;z-index:1;background:radial-gradient(circle at 35% 20%,rgba(124,58,237,.12),transparent 60%),radial-gradient(circle at 65% 70%,rgba(34,211,238,.1),transparent 58%),linear-gradient(180deg,rgba(10,11,18,.92),rgba(6,7,12,.98));border-radius:22px;border:1px solid rgba(255,255,255,.05);box-shadow:inset 0 0 40px rgba(124,58,237,.08)}
+.dv-3d{position:absolute;inset:0;z-index:1;background:radial-gradient(circle at 35% 20%,rgba(124,58,237,.16),transparent 60%),radial-gradient(circle at 65% 70%,rgba(34,211,238,.16),transparent 58%),linear-gradient(180deg,rgba(12,13,20,.88),rgba(7,8,13,.96));border-radius:22px;border:1px solid rgba(255,255,255,.06);box-shadow:inset 0 0 50px rgba(124,58,237,.12)}
 .dv-3d canvas{width:100%;height:100%;display:block;border-radius:22px}
 .dv-rig{position:absolute;inset:0;width:100%;height:100%;transform-style:preserve-3d;transition:transform .18s ease;filter:drop-shadow(0 16px 36px rgba(0,0,0,.5))}
 .dv.dv-3d-on .dv-rig,

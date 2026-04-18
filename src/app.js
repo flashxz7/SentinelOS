@@ -10,6 +10,7 @@ setInterval(tickClock,1000); tickClock();
 
 // MAP
 var map=L.map('map',{zoomControl:true,attributionControl:false}).setView([30.01,-99.80],14);
+window.addEventListener('resize',function(){map.invalidateSize();});
 var loaded=false;
 var bn=document.getElementById('tile-bn');
 function onLoad(){if(!loaded){loaded=true;bn.classList.add('hidden');setTimeout(function(){bn.style.display='none'},600)}}
@@ -1359,8 +1360,8 @@ function initDrone3d(){
   var scene=new THREE.Scene();
   scene.background=null;
 
-  var camera=new THREE.PerspectiveCamera(45,container.clientWidth/container.clientHeight,0.1,100);
-  camera.position.set(7,5.2,8.5);
+  var camera=new THREE.PerspectiveCamera(40,container.clientWidth/container.clientHeight,0.1,120);
+  camera.position.set(6.4,4.6,7.6);
 
   var target=new THREE.Vector3(0,0.6,0);
   var controls;
@@ -1378,27 +1379,30 @@ function initDrone3d(){
     controls=makeBasicOrbitControls(camera,renderer.domElement,target);
   }
 
-  var ambient=new THREE.AmbientLight(0xffffff,0.75);
+  var ambient=new THREE.AmbientLight(0xffffff,0.85);
   scene.add(ambient);
-  var hemi=new THREE.HemisphereLight(0x7cc7ff,0x0b0b12,0.55);
+  var hemi=new THREE.HemisphereLight(0xb6dcff,0x0b0b12,0.6);
   scene.add(hemi);
-  var dir=new THREE.DirectionalLight(0xffffff,1.25);
+  var dir=new THREE.DirectionalLight(0xffffff,1.4);
   dir.position.set(6,8,6);
   scene.add(dir);
-  var rim=new THREE.DirectionalLight(0x7c3aed,0.45);
-  rim.position.set(-6,4,-4);
+  var rim=new THREE.DirectionalLight(0x8bd4ff,0.5);
+  rim.position.set(-6,5,-4);
   scene.add(rim);
-  var fill=new THREE.PointLight(0x22d3ee,0.7,30,1.6);
-  fill.position.set(-4,2,4);
+  var fill=new THREE.PointLight(0x7c3aed,0.55,30,1.8);
+  fill.position.set(-3,2.5,4);
   scene.add(fill);
+  var top=new THREE.PointLight(0x22d3ee,0.5,30,2.0);
+  top.position.set(0,6,0);
+  scene.add(top);
 
-  var grid=new THREE.GridHelper(30,30,0x2e3144,0x141622);
+  var grid=new THREE.GridHelper(30,30,0x3a3f55,0x1a1d2c);
   grid.position.y=-1.2;
   grid.material.opacity=0.6;
   grid.material.transparent=true;
   scene.add(grid);
 
-  var deckMat=new THREE.MeshStandardMaterial({color:0x273243,transparent:true,opacity:0.55,metalness:0.15,roughness:0.6});
+  var deckMat=new THREE.MeshStandardMaterial({color:0x2a3444,transparent:true,opacity:0.6,metalness:0.2,roughness:0.55});
   var deck=new THREE.Mesh(new THREE.CircleGeometry(6,64),deckMat);
   deck.rotation.x=-Math.PI/2;
   deck.position.y=-1.18;
@@ -1437,7 +1441,7 @@ function initDrone3d(){
   function animate(){
     if(!threeState) return;
     threeState.animId=requestAnimationFrame(animate);
-    threeState.rotors.forEach(function(r){r.rotation.y+=0.6;});
+    threeState.rotors.forEach(function(r){r.rotation.y+=0.75;});
     updateHotspotPositions();
     controls.update();
     renderer.render(scene,camera);
@@ -1448,37 +1452,57 @@ function buildDroneMesh(){
   var group=new THREE.Group();
   group.position.y=0.4;
 
-  var bodyMat=new THREE.MeshStandardMaterial({color:0x0d1017,metalness:0.65,roughness:0.32});
-  var plateMat=new THREE.MeshStandardMaterial({color:0x171c27,metalness:0.4,roughness:0.45});
-  var accentMat=new THREE.MeshStandardMaterial({color:0x7c3aed,emissive:0x2b0f4b,emissiveIntensity:0.85,metalness:0.4,roughness:0.22});
-  var accentMat2=new THREE.MeshStandardMaterial({color:0x22d3ee,emissive:0x0b2b33,emissiveIntensity:0.7,metalness:0.4,roughness:0.2});
-  var glassMat=new THREE.MeshStandardMaterial({color:0x7dd3fc,transparent:true,opacity:0.6,metalness:0.1,roughness:0.15});
+  var bodyMat=new THREE.MeshStandardMaterial({color:0x0a0b12,metalness:0.72,roughness:0.28});
+  var plateMat=new THREE.MeshStandardMaterial({color:0x141826,metalness:0.45,roughness:0.42});
+  var accentMat=new THREE.MeshStandardMaterial({color:0x7c3aed,emissive:0x2b0f4b,emissiveIntensity:1.0,metalness:0.4,roughness:0.2});
+  var accentMat2=new THREE.MeshStandardMaterial({color:0x7dd3fc,emissive:0x0b2b33,emissiveIntensity:0.9,metalness:0.4,roughness:0.18});
+  var glassMat=new THREE.MeshStandardMaterial({color:0xa5f3fc,transparent:true,opacity:0.72,metalness:0.1,roughness:0.12});
+  var edgeMat=new THREE.LineBasicMaterial({color:0x2b3144,transparent:true,opacity:0.8});
 
-  var body=new THREE.Mesh(new THREE.BoxGeometry(3.6,0.6,2.4),bodyMat);
-  body.position.y=0.2;
+  var bodyGeo=new THREE.BoxGeometry(3.7,0.52,2.55);
+  var body=new THREE.Mesh(bodyGeo,bodyMat);
+  body.position.y=0.18;
   group.add(body);
+  var bodyEdges=new THREE.LineSegments(new THREE.EdgesGeometry(bodyGeo,15),edgeMat);
+  bodyEdges.position.copy(body.position);
+  group.add(bodyEdges);
 
-  var deck=new THREE.Mesh(new THREE.BoxGeometry(1.9,0.16,1.1),glassMat);
+  var midGeo=new THREE.BoxGeometry(3.3,0.18,2.1);
+  var mid=new THREE.Mesh(midGeo,plateMat);
+  mid.position.y=0.42;
+  group.add(mid);
+  var midEdges=new THREE.LineSegments(new THREE.EdgesGeometry(midGeo,15),edgeMat);
+  midEdges.position.copy(mid.position);
+  group.add(midEdges);
+
+  var deck=new THREE.Mesh(new THREE.BoxGeometry(2.05,0.14,1.2),glassMat);
   deck.position.set(0,0.55,0);
   group.add(deck);
 
-  var core=new THREE.Mesh(new THREE.BoxGeometry(2.0,0.18,0.35),accentMat);
+  var core=new THREE.Mesh(new THREE.BoxGeometry(2.15,0.16,0.35),accentMat);
   core.position.set(0,-0.05,1.0);
   group.add(core);
 
-  var railLeft=new THREE.Mesh(new THREE.BoxGeometry(0.16,0.12,2.2),accentMat2);
-  railLeft.position.set(-1.55,0.08,0);
+  var railLeft=new THREE.Mesh(new THREE.BoxGeometry(0.16,0.1,2.25),accentMat2);
+  railLeft.position.set(-1.6,0.1,0);
   group.add(railLeft);
-  var railRight=new THREE.Mesh(new THREE.BoxGeometry(0.16,0.12,2.2),accentMat2);
-  railRight.position.set(1.55,0.08,0);
+  var railRight=new THREE.Mesh(new THREE.BoxGeometry(0.16,0.1,2.25),accentMat2);
+  railRight.position.set(1.6,0.1,0);
   group.add(railRight);
 
-  var armMat=new THREE.MeshStandardMaterial({color:0x0b0c12,metalness:0.55,roughness:0.4});
-  var armGeo=new THREE.BoxGeometry(2.6,0.14,0.24);
-  var armFront=new THREE.Mesh(armGeo,armMat);armFront.position.set(0,0.05,1.05);group.add(armFront);
-  var armBack=new THREE.Mesh(armGeo,armMat);armBack.position.set(0,0.05,-1.05);group.add(armBack);
-  var armLeft=new THREE.Mesh(new THREE.BoxGeometry(2.1,0.14,0.24),armMat);armLeft.rotation.y=Math.PI/2;armLeft.position.set(-1.45,0.05,0);group.add(armLeft);
-  var armRight=new THREE.Mesh(new THREE.BoxGeometry(2.1,0.14,0.24),armMat);armRight.rotation.y=Math.PI/2;armRight.position.set(1.45,0.05,0);group.add(armRight);
+  var armMat=new THREE.MeshStandardMaterial({color:0x0b0c12,metalness:0.6,roughness:0.38});
+  function addArm(toX,toZ){
+    var len=Math.hypot(toX, toZ)*0.7;
+    var arm=new THREE.Mesh(new THREE.BoxGeometry(len,0.12,0.22),armMat);
+    var ang=Math.atan2(toX,toZ);
+    arm.rotation.y=ang;
+    arm.position.set(toX*0.35,0.06,toZ*0.35);
+    group.add(arm);
+  }
+  addArm(-2.2,1.6);
+  addArm(2.2,1.6);
+  addArm(-2.2,-1.6);
+  addArm(2.2,-1.6);
 
   var hubMat=new THREE.MeshStandardMaterial({color:0x0f1218,metalness:0.6,roughness:0.35});
   var bladeMat=new THREE.MeshStandardMaterial({color:0x0c0f14,metalness:0.25,roughness:0.55,transparent:true,opacity:0.55});
@@ -1489,7 +1513,7 @@ function buildDroneMesh(){
     var hub=new THREE.Mesh(new THREE.CylinderGeometry(0.2,0.2,0.1,20),hubMat);
     hub.rotation.x=Math.PI/2;
     rotor.add(hub);
-    var bladeGeo=new THREE.BoxGeometry(1.2,0.02,0.16);
+    var bladeGeo=new THREE.BoxGeometry(1.35,0.02,0.16);
     var blade1=new THREE.Mesh(bladeGeo,bladeMat);
     blade1.position.set(0.6,0,0);
     var blade2=new THREE.Mesh(bladeGeo,bladeMat);
@@ -1501,7 +1525,11 @@ function buildDroneMesh(){
     var blade4=new THREE.Mesh(bladeGeo,bladeMat);
     blade4.rotation.y=-Math.PI/2;
     blade4.position.set(0,0,-0.6);
+    var arc=new THREE.Mesh(new THREE.RingGeometry(0.28,0.33,40,1,Math.PI*0.2,Math.PI*1.4),accentMat2);
+    arc.rotation.x=-Math.PI/2;
+    arc.position.y=0.06;
     rotor.add(blade1,blade2,blade3,blade4);
+    rotor.add(arc);
     group.add(rotor);
     rotors.push(rotor);
   }
@@ -1510,14 +1538,14 @@ function buildDroneMesh(){
   makeRotor(-2.2,-1.6);
   makeRotor(2.2,-1.6);
 
-  var legMat=new THREE.MeshStandardMaterial({color:0x0c0d12,metalness:0.4,roughness:0.6});
+  var legMat=new THREE.MeshStandardMaterial({color:0x0b0c12,metalness:0.35,roughness:0.65});
   [[-1.2,-0.1,1.2],[1.2,-0.1,1.2],[-1.2,-0.1,-1.2],[1.2,-0.1,-1.2]].forEach(function(p){
     var leg=new THREE.Mesh(new THREE.CylinderGeometry(0.06,0.08,0.5,12),legMat);
     leg.position.set(p[0],p[1],p[2]);
     group.add(leg);
   });
 
-  var cam=new THREE.Mesh(new THREE.SphereGeometry(0.18,16,16),accentMat2);
+  var cam=new THREE.Mesh(new THREE.SphereGeometry(0.2,16,16),accentMat2);
   cam.position.set(0,-0.05,1.25);
   group.add(cam);
 
@@ -1532,14 +1560,15 @@ function buildDroneMesh(){
     new THREE.MeshStandardMaterial({color:0xfca5a5,transparent:true,opacity:0.35,metalness:0.1,roughness:0.4})
   ];
   var orbiters=[];
-  var sphereGeo=new THREE.SphereGeometry(0.32,24,24);
-  var ringGeo=new THREE.TorusGeometry(0.5,0.05,12,40);
+  var sphereGeo=new THREE.SphereGeometry(0.34,24,24);
+  var ringGeo=new THREE.TorusGeometry(0.55,0.05,12,40);
+  var discGeo=new THREE.CircleGeometry(0.62,40);
   [
-    {x:-0.8,y:0.5,z:0.2,mat:0,tilt:0.5},
-    {x:0.2,y:0.55,z:0.6,mat:1,tilt:-0.7},
-    {x:0.9,y:0.52,z:0.0,mat:2,tilt:0.3},
-    {x:-0.3,y:0.38,z:-0.6,mat:0,tilt:-0.5},
-    {x:0.6,y:0.3,z:-0.3,mat:1,tilt:0.8}
+    {x:-0.75,y:0.52,z:0.3,mat:0,tilt:0.5},
+    {x:0.0,y:0.58,z:0.65,mat:1,tilt:-0.7},
+    {x:0.9,y:0.54,z:0.1,mat:2,tilt:0.3},
+    {x:-0.25,y:0.4,z:-0.55,mat:0,tilt:-0.5},
+    {x:0.6,y:0.32,z:-0.25,mat:1,tilt:0.8}
   ].forEach(function(o){
     var sphere=new THREE.Mesh(sphereGeo,orbMats[o.mat]);
     sphere.position.set(o.x,o.y,o.z);
@@ -1547,8 +1576,12 @@ function buildDroneMesh(){
     ring.position.set(o.x,o.y,o.z);
     ring.rotation.x=Math.PI/2;
     ring.rotation.z=o.tilt;
+    var disc=new THREE.Mesh(discGeo,ringMats[o.mat]);
+    disc.position.set(o.x,o.y-0.03,o.z);
+    disc.rotation.x=-Math.PI/2;
     group.add(sphere);group.add(ring);
-    orbiters.push({mesh:sphere,ring:ring});
+    group.add(disc);
+    orbiters.push({mesh:sphere,ring:ring,disc:disc});
   });
 
   return {
